@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 125 125" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;">
+    <g transform="matrix(1,0,0,1,-256.587,-1272.34)">
+        <g id="drum-sound" serif:id="drum sound" transform="matrix(1.5625,0,0,1.5625,-387.918,-848.548)">
+            <g transform="matrix(1,0,0,1,-64.7939,-6.49606)">
+                <path d="M496.063,1404.01L495.896,1403.85L496.063,1403.68L496.063,1394.88L505.073,1394.88L515.956,1384.25L516.16,1423.23L505.047,1412.6L496.063,1412.6L496.063,1404.01Z" style="fill:rgb(67,123,144);"/>
+            </g>
+            <g transform="matrix(1.49522,0,0,1,-318.179,-5.90551)">
+                <path d="M520.866,1391.34C520.866,1391.34 524.182,1394.86 524.409,1403.15C524.654,1412.05 520.866,1414.96 520.866,1414.96" style="fill:none;stroke:rgb(67,123,144);stroke-width:3.35px;"/>
+            </g>
+            <g transform="matrix(1.29376,0,0,1,-215.325,-6.49606)">
+                <path d="M527.953,1386.61C527.953,1386.61 533.312,1389.91 533.858,1403.15C534.365,1415.43 527.953,1420.87 527.953,1420.87" style="fill:none;stroke:rgb(67,123,144);stroke-width:3.69px;"/>
+            </g>
+            <g transform="matrix(0.969697,0,0,0.969697,-53.8654,28.597)">
+                <circle cx="522.047" cy="1411.42" r="38.976" style="fill:none;stroke:rgb(67,123,144);stroke-width:4.3px;"/>
+            </g>
+        </g>
+    </g>
+</svg>
