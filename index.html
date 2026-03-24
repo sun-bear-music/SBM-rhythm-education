@@ -416,12 +416,11 @@ HOW TO CONTINUE DEVELOPMENT
     align-items:flex-end;
     justify-content:center;
     gap:24px;
-    padding:0 12px 28px; /* 28px bottom = same as feedback strip height */
-    cursor:pointer;
+    padding:0 12px 28px;
     -webkit-tap-highlight-color:transparent;
     user-select:none;
   }
-  .bear-stage{position:relative;height:100%;aspect-ratio:1/1;}
+  .bear-stage{position:relative;height:100%;aspect-ratio:1/1;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;}
   .bear-state{position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;transition:none;}
   .bear-state img{width:100%;height:100%;object-fit:contain;}
   #imgBearJustBear{transform:scale(0.7419);transform-origin:top center;}
@@ -630,7 +629,9 @@ HOW TO CONTINUE DEVELOPMENT
     <div class="side-pad" id="leftPad"></div>
     <div id="bearsCenter">
       <!-- Computer bear -->
-      <div class="bear-stage" id="bearStage">
+      <div class="bear-stage" id="bearStage"
+        ontouchstart="event.preventDefault();handlePlayStop();"
+        onmousedown="handlePlayStop();">
         <div class="bear-state active" id="bearJustBear"><img id="imgBearJustBear" src="" alt="Bear"></div>
         <div class="bear-state" id="bearDrumReady"><img id="imgBearDrumReady" src="" alt="Bear drum ready"></div>
         <div class="bear-state" id="bearDrumMotion"><img id="imgBearDrumMotion" src="" alt="Bear drum motion"></div>
@@ -638,7 +639,9 @@ HOW TO CONTINUE DEVELOPMENT
         <div class="bear-state" id="bearRightStick"><img id="imgBearRightStick" src="" alt="Bear right stick"></div>
       </div>
       <!-- User bear (box bear) -->
-      <div class="bear-stage" id="boxBearStage">
+      <div class="bear-stage" id="boxBearStage"
+        ontouchstart="event.preventDefault();handlePlayStop();"
+        onmousedown="handlePlayStop();">
         <div class="bear-state active" id="boxBearJustBear"><img id="imgBoxBearJustBear" src="" alt="Box bear"></div>
         <div class="bear-state" id="boxBearDrumReady"><img id="imgBoxBearDrumReady" src="" alt="Box bear drum ready"></div>
         <div class="bear-state" id="boxBearDrumMotion"><img id="imgBoxBearDrumMotion" src="" alt="Box bear drum motion"></div>
@@ -1777,9 +1780,7 @@ function initInputHandlers(){
     el.addEventListener('touchstart',e=>{e.preventDefault();handleUserTap(e);},{passive:false});
     el.addEventListener('mousedown',e=>{handleUserTap(e);});
   });
-  // Bear zone taps → play/stop (but NOT side pads, which are user input)
-  document.getElementById('bearsCenter').addEventListener('touchstart',e=>{e.preventDefault();handlePlayStop();},{passive:false});
-  document.getElementById('bearsCenter').addEventListener('mousedown',()=>handlePlayStop());
+  // Bear zone taps → handled by individual bear-stage elements now
   // Stave area → new rhythm
   document.getElementById('staveArea').addEventListener('touchstart',e=>{e.preventDefault();handleStaveTap();},{passive:false});
   document.getElementById('staveArea').addEventListener('mousedown',()=>handleStaveTap());
