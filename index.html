@@ -680,7 +680,7 @@ HOW TO CONTINUE DEVELOPMENT
         <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Tempo <span class="acc-val" id="valTempo">80 bpm</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="form-row"><label>BPM</label><input type="range" id="tempoSlider" min="40" max="180" value="80" oninput="updateTempo(this.value)"><input type="number" id="tempoNum" min="40" max="180" value="80" oninput="updateTempo(this.value)" style="width:62px"></div></div></div></div>
         <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Time Signature <span class="acc-val" id="valTimeSig">4/4</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="radio-group" id="timeSigGroup"><div class="radio-chip" data-val="2/4" onclick="setTimeSig('2/4')">2/4</div><div class="radio-chip" data-val="3/4" onclick="setTimeSig('3/4')">3/4</div><div class="radio-chip selected" data-val="4/4" onclick="setTimeSig('4/4')">4/4</div><div class="radio-chip" data-val="5/4" onclick="setTimeSig('5/4')">5/4</div></div></div></div></div>
         <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Count In <span class="acc-val" id="valCountIn">1 bar</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="form-row"><label>Bars</label><div class="radio-group" id="countInBarsGroup"><div class="radio-chip selected" data-val="1" onclick="setCountInBars(1)">1 bar</div><div class="radio-chip" data-val="2" onclick="setCountInBars(2)">2 bars</div></div></div></div></div></div>
-        <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Metronome <span class="acc-val" id="valMetronome">Both</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="form-row"><div class="radio-group" id="metronomeGroup"><div class="radio-chip selected" data-val="both" onclick="setMetronome('both')">Visual + Sound</div><div class="radio-chip" data-val="visual" onclick="setMetronome('visual')">Visual only</div><div class="radio-chip" data-val="sound" onclick="setMetronome('sound')">Sound only</div><div class="radio-chip" data-val="none" onclick="setMetronome('none')">None</div></div></div><div class="form-row"><label>Volume</label><input type="range" id="metronomeVol" min="0" max="100" value="60" oninput="updateMetronomeVol(this.value)"><span class="val-badge" id="metronomeVolVal">60%</span></div></div></div></div>
+        <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Metronome <span class="acc-val" id="valMetronome">Both</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="form-row"><div class="radio-group" id="metronomeGroup"><div class="radio-chip selected" data-val="both" onclick="setMetronome('both')">Visual + Sound</div><div class="radio-chip" data-val="visual" onclick="setMetronome('visual')">Visual only</div><div class="radio-chip" data-val="sound" onclick="setMetronome('sound')">Sound only</div><div class="radio-chip" data-val="none" onclick="setMetronome('none')">None</div></div></div><div class="form-row"><label>Volume</label><input type="range" id="metronomeVol" min="0" max="100" value="60" oninput="updateMetronomeVol(this.value)"><span class="val-badge" id="metronomeVolVal">60%</span></div><div class="form-row"><label>Sound</label><div class="radio-group" id="metronomeSoundGroup"><div class="radio-chip" data-val="Agogo" onclick="setMetronomeSound('Agogo')">Agogo</div><div class="radio-chip" data-val="Bongo" onclick="setMetronomeSound('Bongo')">Bongo</div><div class="radio-chip selected" data-val="Click" onclick="setMetronomeSound('Click')">Click</div><div class="radio-chip" data-val="Shaker" onclick="setMetronomeSound('Shaker')">Shaker</div><div class="radio-chip" data-val="Triangle" onclick="setMetronomeSound('Triangle')">Triangle</div><div class="radio-chip" data-val="Woodblock" onclick="setMetronomeSound('Woodblock')">Woodblock</div></div></div></div></div></div>
         <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Repeats <span class="acc-val" id="valRepeats">No repeat</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="radio-group" id="repeatsGroup"><div class="radio-chip selected" data-val="0" onclick="setRepeats(0)">No repeat</div><div class="radio-chip" data-val="1" onclick="setRepeats(1)">x2 total</div><div class="radio-chip" data-val="3" onclick="setRepeats(3)">x4 total</div><div class="radio-chip" data-val="7" onclick="setRepeats(7)">x8 total</div><div class="radio-chip" data-val="99" onclick="setRepeats(99)">&#8734;</div></div></div></div></div>
         <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Drum Volume <span class="acc-val" id="valAssistVol">80%</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="form-row"><label>Volume</label><input type="range" id="assistVol" min="0" max="100" value="80" oninput="updateAssistVol(this.value)"><span class="val-badge" id="assistVolVal">80%</span></div></div></div></div>
         <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Assistance <span class="acc-val" id="valAssistance">Beat &amp; Bar on</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="form-row"><label>Beat highlight</label><div class="radio-group" id="beatHighlightGroup"><div class="radio-chip selected" data-val="on" onclick="setBeatHighlight('on')">On</div><div class="radio-chip" data-val="off" onclick="setBeatHighlight('off')">Off</div></div></div><div class="form-row"><label>Bar highlight</label><div class="radio-group" id="barHighlightGroup"><div class="radio-chip selected" data-val="on" onclick="setBarHighlight('on')">On</div><div class="radio-chip" data-val="off" onclick="setBarHighlight('off')">Off</div></div></div></div></div></div>
@@ -780,6 +780,24 @@ function loadImages(cb){
   document.getElementById('imgBoxBearDrumMotion').src=SVGS['box_bear_drum_motion'];
   document.getElementById('imgBoxBearLeftStick').src=SVGS['box_bear_left_stick'];
   document.getElementById('imgBoxBearRightStick').src=SVGS['box_bear_right_stick'];
+}
+
+// ── METRONOME SOUND BUFFERS ───────────────────────────────────
+const METRONOME_SOUNDS=['Agogo','Bongo','Click','Shaker','Triangle','Woodblock'];
+const SOUND_BUFFERS={}; // { 'High_Click': AudioBuffer, 'Low_Click': AudioBuffer, ... }
+
+function loadSounds(){
+  const ac=getAC();
+  METRONOME_SOUNDS.forEach(name=>{
+    ['High','Low'].forEach(tone=>{
+      const key=`${tone}_${name}`;
+      fetch(`assets/sounds/${key}.wav`)
+        .then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.arrayBuffer();})
+        .then(ab=>ac.decodeAudioData(ab))
+        .then(buf=>{SOUND_BUFFERS[key]=buf;})
+        .catch(err=>console.warn(`Metronome sound not loaded: ${key}.wav`,err));
+    });
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -932,7 +950,7 @@ const LEVELS=[
   {num:8,label:'Level 8',desc:'+ triplets',                 pool:['ta','sah','ti-ti','ti','si','tika-tika','tika-ti','ti-tika','timka','tika','tahm','sahm','tika-ka','seka-ti','triplet','triola','triola-ti','ti-triola','triola-triola']},
 ];
 
-const S={bars:2,tempo:80,timeSig:'4/4',countInBars:1,metronome:'both',metronomeVol:0.6,repeats:0,assistVol:0.8,assistMode:'duet',level:4,latencyOffset:0};
+const S={bars:2,tempo:80,timeSig:'4/4',countInBars:1,metronome:'both',metronomeVol:0.6,repeats:0,assistVol:0.8,assistMode:'duet',level:4,latencyOffset:0,metronomeSound:'Click'};
 let drumEnabled=true;
 let barHighlightEnabled=true;
 let noteHighlightEnabled=true;
@@ -1243,11 +1261,21 @@ function playDrum(t,vol){
 }
 function playClick(t,accent,vol){
   const ac=getAC(),v=Math.min((vol??S.metronomeVol)*(accent?1.2:0.75),1);
-  const o=trackNode(ac.createOscillator()),g=ac.createGain();
-  o.connect(g);g.connect(ac.destination);
-  o.type='sine';o.frequency.value=accent?1200:900;
-  g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.05);
-  o.start(t);o.stop(t+0.06);
+  const key=(accent?'High':'Low')+'_'+S.metronomeSound;
+  const buf=SOUND_BUFFERS[key];
+  if(buf){
+    const s=trackNode(ac.createBufferSource()),g=ac.createGain();
+    s.buffer=buf;s.connect(g);g.connect(ac.destination);
+    g.gain.setValueAtTime(v,t);
+    s.start(t);
+  } else {
+    // Fallback to synthesised click if WAV not loaded yet
+    const o=trackNode(ac.createOscillator()),g=ac.createGain();
+    o.connect(g);g.connect(ac.destination);
+    o.type='sine';o.frequency.value=accent?1200:900;
+    g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.05);
+    o.start(t);o.stop(t+0.06);
+  }
 }
 function shouldSound(ri){return S.assistMode==='duet'||(S.assistMode==='listen'&&ri===0)||(S.assistMode==='play'&&ri>=1);}
 function totalPlays(){if(S.assistMode!=='duet')return 2;if(S.repeats===99)return Infinity;return S.repeats+1;}
@@ -1504,6 +1532,7 @@ function setMetronome(v){
   document.getElementById('valMetronome').textContent=labels[v]||v;
 }
 function updateMetronomeVol(v){S.metronomeVol=v/100;document.getElementById('metronomeVolVal').textContent=`${v}%`;}
+function setMetronomeSound(v){S.metronomeSound=v;chips('metronomeSoundGroup',v);}
 function setRepeats(v){S.repeats=parseInt(v);chips('repeatsGroup',v);document.getElementById('valRepeats').textContent={0:'No repeat',1:'\u00d72 total',3:'\u00d74 total',7:'\u00d78 total',99:'\u221e'}[v]||`\u00d7${parseInt(v)+1}`;redrawBar(S.bars-1);}
 function updateAssistVol(v){S.assistVol=v/100;document.getElementById('assistVolVal').textContent=`${v}%`;document.getElementById('valAssistVol').textContent=`${v}%`;}
 
@@ -1804,6 +1833,7 @@ window.addEventListener('load',()=>{
   layoutSizes();
   initInputHandlers();
   loadImages(()=>{generateNewRhythm();positionBeatNums();});
+  loadSounds();
 });
 window.addEventListener('resize',()=>{layoutSizes();drawAllBars();positionBeatNums();});
 
