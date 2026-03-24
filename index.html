@@ -174,6 +174,111 @@ SETTINGS (modal overlay, opened via ⚙ Settings button in transport bar)
   Assistance Mode: Duet / Listen First / Play First
 
 ─────────────────────────────────────────────────────────────────────────────
+DUET MODE — PLANNED FEATURE (designed, not yet built)
+─────────────────────────────────────────────────────────────────────────────
+  CONCEPT
+    A second interactive play mode where the user taps along to the rhythm
+    while the computer plays it perfectly. Two bears play a duet — the
+    computer bear always has a drum; the user bear's instrument changes
+    based on their previous score (see OBJECT LADDER below).
+
+  CORE MECHANIC
+    - A "Start Duet" button arms the tap listener (separate from the
+      existing whole-screen play/stop tap, which must be preserved)
+    - Count-in plays as normal — user listens, then taps along
+    - Tap events (touchstart / mousedown) are timestamped and compared
+      against the rhythm timeline's expected beat offsets
+    - Rests: taps during rest positions are ignored or lightly penalised
+    - After the rhythm finishes, scoring and note annotation are shown
+
+  TIMING TOLERANCE (suggested, tune per level)
+    - ≤ 80ms from expected → perfect
+    - 80–150ms early or late → close
+    - 150–300ms early or late → marginal
+    - > 300ms, or no tap → miss
+    Consider tightening windows at higher levels, loosening at lower levels.
+    Note: mobile audio/touch latency may require a small fixed calibration
+    offset — worth testing on iPad and iPhone early.
+
+  SCORING — STARS OUT OF 5
+    Star rating based on percentage of notes that land "close" or better.
+    Displayed after each round with a fun callout (not clinical).
+
+  POST-PLAY ANNOTATION — SCATTER DOT SYSTEM
+    After the rhythm finishes, draw coloured dots below the stave on each
+    bar canvas — one dot per expected tap (and one per erroneous tap).
+    Dots are positioned horizontally in musical time, not just under the
+    notehead, giving an intuitive "footprint" of the user's performance.
+
+    HORIZONTAL POSITION
+      The x position of a dot reflects when the user actually played:
+        pixel offset = (tap error in ms / ms per beat) * BEAT_W
+      A tap 50ms early shifts the dot left; 50ms late shifts it right.
+      A perfect tap sits directly below the notehead.
+      Cap offset at ±(BEAT_W / 2) so dots don't overlap adjacent notes.
+
+    DOT COLOUR
+      - Green  → perfect or close (≤ 150ms)
+      - Amber  → marginal (150–300ms early or late)
+      - Red    → miss (> 300ms) or no tap (dot centred on expected position)
+
+    ERRONEOUS TAPS
+      - Tap on a rest → small ✕ mark in dark/neutral colour below rest position
+      - Extra tap on a single note (e.g. double-tapping a crotchet) →
+        small black dot offset slightly right of the note (registers as
+        a late second hit with no matching note in the timeline)
+
+    GROUPED NOTES (single SVG, multiple hits)
+      e.g. ti-ti, tika-tika, tika-ti etc. — each sub-hit gets its own
+      dot positioned at its own expected x coordinate within the group.
+      This works naturally with the scatter system since sub-hit x positions
+      are already known from the beat-grid coordinate system.
+      No need to colour or split the SVG itself.
+
+  OBJECT LADDER — USER BEAR'S INSTRUMENT
+    Determined by the PREVIOUS round's star rating (first round = drum,
+    benefit of the doubt). Object changes each round:
+    - 1 star  → shoe / old boot
+    - 2 stars → cardboard box
+    - 3 stars → cooking pot / saucepan
+    - 4 stars → bongo / small hand drum
+    - 5 stars → proper drum (same as computer bear)
+    Goal: keep the drum. Losing it is funny, not discouraging.
+
+  STREAK MECHANIC
+    Track consecutive 5-star rounds. Show milestone callouts, e.g.:
+    - 3 in a row  → "Drum Protector!"
+    - 5 in a row  → "Rhythm Machine!"
+    - 10 in a row → "Bear Whisperer!"
+    - 15 in a row → "Absolutely Unstoppable!"
+    Reset streak on any round that is not 5 stars.
+
+  TWO-BEAR LAYOUT
+    Computer bear: existing bear column, always has drum, plays perfectly.
+    User bear: second bear column alongside or stacked. Suggested approach:
+    two smaller bears side by side on desktop/iPad; stacked on smaller screens.
+    User bear reacts expressively — confident with drum, game-but-embarrassed
+    with shoe, confused by pillow etc.
+    DO NOT attempt duet mode on iPhone portrait — already blocked by overlay.
+
+  BAR LIMIT
+    Duet mode locked to maximum 2 bars (enforce in UI as with time sig
+    restrictions per level). Keeps the rhythm short enough to hold in memory
+    and avoids scroll complexity.
+
+  BEAR SVG NAMING CONVENTION
+    New bear assets follow the pattern:
+      bear_{state}_{object}
+    where state is one of: just_bear, drum_ready, drum_motion,
+    left_stick, right_stick
+    and object is one of: drum (existing), shoe, box, saucepan, bongo
+    Example: bear_left_stick_shoe, bear_right_stick_box
+    This allows the code to construct asset names dynamically from
+    (current bear state) + (current object) without a large lookup table.
+    All new SVGs should share the same viewBox dimensions and staff-line
+    anchor point as the existing bear assets.
+
+─────────────────────────────────────────────────────────────────────────────
 KNOWN REMAINING ISSUES / FUTURE WORK
 ─────────────────────────────────────────────────────────────────────────────
   - anchorY calibration may need fine-tuning (notehead vertical position on line)
@@ -200,159 +305,222 @@ HOW TO CONTINUE DEVELOPMENT
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bearly In Time</title>
+<title>Drum Bear Duo</title>
 
 <style>
   :root{
+    --bg:#1A3A41;
+    --bg-mid:#1e4049;
+    --count-bg:#3D5C63;
+    --feedback-bg:#6B2C2C;
     --cream:#f5f0e8;--cream-dark:#ede5d0;--parchment:#e8dfc8;
     --teal:#437B90;--teal-light:#5a9ab0;--teal-dark:#437B90;
     --amber:#c97d2a;--amber-light:#e8a040;--red:#b84040;
     --text:#2a2018;--text-muted:#7a6a50;
-    --shadow:0 2px 8px rgba(42,32,24,0.08), 0 8px 32px rgba(42,32,24,0.11);
-    --shadow-sm:0 1px 4px rgba(42,32,24,0.09);
     --radius:16px;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:Verdana,sans-serif;background:var(--cream);color:var(--text);min-height:100vh;background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c4b898' fill-opacity='0.18'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2V6h4V4h-4zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");}
-  h1{font-family:'Trebuchet MS',Verdana,sans-serif;font-size:2rem;color:var(--teal-dark);line-height:1.2;}
+  html,body{width:100%;height:100%;overflow:hidden;font-family:Verdana,sans-serif;}
 
-  /* ── Header ── */
-  .app-header{display:flex;align-items:center;gap:16px;padding:16px 28px 14px;border-bottom:2px solid var(--parchment);background:linear-gradient(to bottom,#fdfaf5,var(--cream));}
-  .app-header .subtitle{font-size:0.78rem;color:var(--text-muted);margin-top:3px;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;}
-  .header-logo{width:46px;height:46px;background:linear-gradient(135deg,#5a9ab0,#437B90);border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(67,123,144,0.28);}
-  .header-logo svg{width:28px;height:28px;fill:white;}
+  /* ── Full-screen app shell ── */
+  #app{
+    width:100vw;height:100vh;
+    display:flex;flex-direction:column;
+    background:var(--bg);
+    overflow:hidden;
+  }
 
-  /* ── Layout ── */
-  .app-body{max-width:1100px;margin:0 auto;padding:20px 20px 48px;display:flex;flex-direction:column;gap:18px;}
-  .card{background:white;border-radius:var(--radius);box-shadow:var(--shadow);border:1.5px solid var(--parchment);overflow:hidden;}
+  /* ── Count bar ── */
+  #countBar{
+    flex-shrink:0;
+    height:52px;
+    background:var(--bg);
+    display:flex;align-items:center;
+    position:relative;
+    user-select:none;
+  }
+  /* Settings button — red circle top-left */
+  #settingsBtn{
+    position:absolute;left:10px;top:50%;transform:translateY(-50%);
+    width:36px;height:36px;border-radius:50%;
+    background:none;border:none;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    z-index:10;
+    flex-shrink:0;
+  }
+  #settingsBtn:hover{opacity:0.75;}
 
-  /* ── Level bar ── */
-  .level-bar{display:flex;align-items:center;gap:10px;padding:11px 22px;background:#3D5C63;flex-wrap:wrap;}
-  .level-bar-label{color:rgba(255,255,255,0.6);font-size:0.75rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;}
-  .level-chips{display:flex;gap:5px;flex-wrap:wrap;}
-  .level-chip{padding:4px 14px;border-radius:20px;font-size:0.82rem;font-weight:700;cursor:pointer;transition:all 0.15s;border:1.5px solid rgba(255,255,255,0.22);color:rgba(255,255,255,0.55);background:transparent;user-select:none;}
-  .level-chip.active{background:rgba(255,250,239,0.15);border-color:#FFFAEF;color:white;box-shadow:0 0 8px 2px rgba(255,250,239,0.4);}
-  .level-chip:hover:not(.active){border-color:rgba(255,255,255,0.55);color:white;background:rgba(255,255,255,0.08);}
+  /* Beat numbers row — absolutely positioned to align with beat slots */
+  #beatNums{
+    position:absolute;
+    left:0;right:0;top:0;bottom:0;
+    pointer-events:none;
+  }
+  .beat-num{
+    position:absolute;
+    font-family:'Trebuchet MS',Verdana,sans-serif;
+    font-size:1.2rem;font-weight:700;
+    color:rgba(255,250,239,0.25);
+    transition:color 0.08s, transform 0.08s, opacity 0.15s;
+    text-align:left;
+    transform-origin:left center;
+    top:50%;transform:translateY(-50%);
+    white-space:nowrap;
+    opacity:0;
+  }
+  #beatNums.active .beat-num{opacity:1;}
+  .beat-num.passive{color:rgba(255,250,239,0.25);}
+  .beat-num.active{color:#E9C84D;transform:translateY(-50%) scale(1.2);}
+  .beat-num.accent{color:#E9C84D;transform:translateY(-50%) scale(1.28);font-weight:900;}
 
+  /* ── Stave area ── */
+  #staveArea{
+    flex-shrink:0;
+    background:var(--bg);
+    cursor:pointer;
+    position:relative;
+    display:flex;flex-direction:column;justify-content:center;align-items:center;
+  }
+  #rhythmStaves{display:flex;flex-direction:column;gap:2px;align-items:center;}
 
-  /* ── Bear column ── */
-  .main-layout{display:flex;flex-direction:column;}
-  .main-layout-inner{display:flex;flex-direction:row;align-items:stretch;}
-  .bear-col{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px 14px 14px;width:260px;flex-shrink:0;background:#1A3A41;}
-  .bear-stage{position:relative;width:220px;height:220px;}
-  .hidden-for-js{display:none;}
+  /* ── Feedback strip ── */
+  #feedbackStrip{
+    flex-shrink:0;
+    height:28px;
+    background:var(--bg);
+    position:relative;
+    overflow:hidden;
+  }
+
+  /* ── Bear zone ── */
+  #bearZone{
+    flex:1;
+    display:flex;
+    flex-direction:row;
+    min-height:0;
+    background:var(--bg);
+    position:relative;
+  }
+  /* Side tap pads */
+  .side-pad{
+    flex:1;
+    min-width:60px;
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+    user-select:none;
+  }
+  /* Bears center */
+  #bearsCenter{
+    flex-shrink:0;
+    display:flex;flex-direction:row;
+    align-items:flex-end;
+    justify-content:center;
+    gap:24px;
+    padding:0 12px 28px; /* 28px bottom = same as feedback strip height */
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+    user-select:none;
+  }
+  .bear-stage{position:relative;height:100%;aspect-ratio:1/1;}
   .bear-state{position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;transition:none;}
   .bear-state img{width:100%;height:100%;object-fit:contain;}
-  /* bear_just_bear viewBox is 862px tall vs 1162px for drum images.
-     Scale it down by 862/1162 ≈ 0.7419 so the bear body appears the same size,
-     and shift it down so it sits at the bottom of the frame like the drum images. */
   #imgBearJustBear{transform:scale(0.7419);transform-origin:top center;}
+  #imgBoxBearJustBear{transform:scale(0.7419);transform-origin:top center;}
   .bear-state.active{opacity:1;}
-  .countin-display.pulse{animation:countpulse 0.18s ease-out;}
-  @keyframes countpulse{0%{transform:scale(1.5);color:var(--amber-light)}100%{transform:scale(1);color:var(--amber)}}
-  .staves-col{flex:1;min-width:0;max-width:880px;display:flex;flex-direction:column;}
-  @media(max-width:680px){
-    .main-layout-inner{flex-direction:column;}
-    .bear-col{flex-direction:row;width:100%;border-right:none;border-bottom:1.5px solid var(--parchment);padding:10px 16px;gap:14px;align-items:center;justify-content:flex-start;}
-    .bear-stage{width:70px;height:86px;flex-shrink:0;}
-    .bear-status{margin-top:0;text-align:left;}
-    .countin-display{margin-top:0;margin-left:auto;}
-    .transport{flex-direction:column;}
-    .transport-controls{width:100%;}
-  }
 
-  /* ── Rhythm area ── */
-  .rhythm-area{padding:12px 16px 14px;display:flex;flex-direction:column;background:#1A3A41;}
-  .rhythm-area-header{display:flex;align-items:center;margin-top:10px;}
-  .rhythm-area-header h2{font-family:'Trebuchet MS',Verdana,sans-serif;font-size:1.08rem;color:var(--teal-dark);}
-  .new-rhythm-btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;font-size:0.88rem;background:var(--cream);color:var(--teal);border:1.5px solid var(--teal-light);border-radius:10px;padding:9px 14px;cursor:pointer;font-family:Verdana,sans-serif;font-weight:700;letter-spacing:0.04em;transition:background 0.15s,box-shadow 0.15s;box-shadow:0 2px 8px rgba(42,107,107,0.15);}
-  .new-rhythm-btn:hover{background:var(--parchment);box-shadow:0 3px 10px rgba(42,107,107,0.22);}
-  #rhythmStaves{display:flex;flex-direction:column;gap:2px;}
+  /* Hidden JS targets */
+  .hidden-for-js{display:none;}
 
-  /* ── Transport ── */
-  .transport{display:flex;align-items:center;gap:0;padding:0;background:#3D5C63;border-top:1.5px solid rgba(255,250,239,0.15);}
-  .transport-controls{display:flex;align-items:center;gap:12px;padding:12px 22px;flex:1;flex-wrap:wrap;}
-  .transport-btns{display:flex;gap:9px;align-items:center;}
-  .btn-transport{width:46px;height:46px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;box-shadow:0 2px 6px rgba(0,0,0,0.18);}
-  .btn-transport:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 10px rgba(0,0,0,0.22);}
-  .btn-transport:active:not(:disabled){transform:translateY(0);box-shadow:0 1px 3px rgba(0,0,0,0.2);}
-  .btn-play{background:#3BAF9F;}.btn-play:hover:not(:disabled){background:#4ecfbe;}
-  .btn-pause{background:#E9794D;}.btn-pause:hover:not(:disabled){background:#f08f68;}
-  .btn-stop{background:#AF3B45;}.btn-stop:hover:not(:disabled){background:#c44d58;}
-  .btn-transport:disabled{opacity:0.3;cursor:not-allowed;box-shadow:none;}
-  .transport-toggles{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap;}
-  .toggle-pill{display:flex;align-items:center;justify-content:center;width:40px;height:40px;background:rgba(255,255,255,0.1);border:1.5px solid rgba(255,255,255,0.25);border-radius:20px;cursor:pointer;transition:all 0.15s;user-select:none;box-shadow:none;padding:0;}
-  .toggle-pill img{width:22px;height:22px;opacity:0.6;transition:opacity 0.15s;filter:brightness(0) invert(1);}
-  .toggle-pill.active img{opacity:1;filter:brightness(0) invert(1);}
-  .toggle-pill:hover:not(.active){border-color:rgba(255,255,255,0.55);background:rgba(255,255,255,0.18);}
-  .toggle-pill:hover:not(.active) img{opacity:1;}
-  .toggle-pill.active{background:rgba(255,250,239,0.15);border-color:#FFFAEF;box-shadow:0 0 8px 2px rgba(255,250,239,0.4);}
-
-  /* ── Tempo widget ── */
-  .tempo-widget{display:flex;align-items:center;gap:8px;padding:0 12px;}
-  .tempo-label{font-size:0.72rem;font-weight:700;color:rgba(255,255,255,0.6);white-space:nowrap;letter-spacing:0.04em;text-transform:uppercase;}
-  .tempo-slider{-webkit-appearance:none;height:6px;background:rgba(255,255,255,0.2);border:none;border-radius:3px;padding:0;cursor:pointer;width:120px;}
-  .tempo-slider::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;background:var(--teal-light);border-radius:50%;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.3);}
-  .tempo-slider::-webkit-slider-thumb:hover{background:white;}
-  .tempo-val{font-size:0.82rem;font-weight:700;color:rgba(255,255,255,0.9);min-width:52px;}
-
-  /* ── Welcome overlay ── */
-  .stave-wrapper{position:relative;}
-  .welcome-overlay{
-    position:absolute;inset:0;
-    background:rgba(245,240,232,0.92);
-    backdrop-filter:blur(2px);
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:12px;
-    cursor:pointer;
-    z-index:10;
-    border-radius:8px;
-    padding:24px;
-    text-align:center;
-    transition:opacity 0.3s ease;
-  }
-  .welcome-overlay.hiding{opacity:0;pointer-events:none;}
-  .welcome-close{position:absolute;top:10px;right:12px;width:28px;height:28px;border-radius:50%;background:rgba(67,123,144,0.15);border:1.5px solid rgba(67,123,144,0.3);color:var(--teal-dark);font-size:1rem;line-height:1;display:flex;align-items:center;justify-content:center;pointer-events:none;}
-  .welcome-overlay .welcome-main{font-family:'Trebuchet MS',Verdana,sans-serif;font-size:1.15rem;color:var(--teal-dark);font-weight:700;line-height:1.4;}
-  .welcome-overlay .welcome-tap{font-size:1.8rem;}
-  .welcome-overlay .welcome-hint{font-size:0.75rem;color:var(--text-muted);font-weight:600;margin-top:4px;}
-
-  /* ── Beat bar (slides in above staves during playback) ── */
-  .beat-bar{
-    overflow:hidden;
-    max-height:0;
-    opacity:0;
-    transition:max-height 0.28s ease, opacity 0.22s ease;
-    background:#1A3A41;
-    border-bottom:none;
-    position:relative;
-  }
-  .beat-bar.visible{
-    max-height:64px;
-    opacity:1;
-  }
-  /* Inner wrapper: positions pips by absolute left, matching the staves column */
-  .beat-bar-inner{
-    position:relative;
-    height:56px;
-  }
-  .beat-pip{
+  /* ── Count-in overlay ── */
+  #countInOverlay{
+    display:none;
     position:absolute;
-    top:50%;
-    transform:translateY(-50%);
-    width:33px;
-    height:33px;
-    display:flex;
+    left:50%;top:50%;
+    transform:translate(-50%,-50%);
+    pointer-events:none;
+    z-index:20;
     align-items:center;
     justify-content:center;
-    border-radius:50%;
   }
-  .beat-pip img{width:33px;height:33px;display:block;filter:brightness(0) saturate(100%) invert(98%) sepia(12%) saturate(300%) hue-rotate(10deg) brightness(103%);}
-  .beat-pip.active img,.beat-pip.accent img{filter:none;}
+  #countInOverlay.active{display:flex;}
+  #countInNum{
+    font-family:'Trebuchet MS',Verdana,sans-serif;
+    font-size:5rem;
+    font-weight:900;
+    color:#E9C84D;
+    line-height:1;
+    opacity:0;
+    transform:scale(1.4);
+    transition:none;
+  }
+  #countInNum.pulse{
+    animation:ciPulse 0.12s ease-out forwards;
+  }
+  @keyframes ciPulse{
+    0%  {opacity:1;transform:scale(1.4);}
+    100%{opacity:1;transform:scale(1);}
+  }
 
-  /* ── Settings button in transport ── */
-  .btn-settings{display:flex;align-items:center;gap:7px;padding:6px 14px;border-radius:20px;border:1.5px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.75);font-size:0.82rem;font-weight:700;cursor:pointer;transition:all 0.15s;user-select:none;font-family:Verdana,sans-serif;box-shadow:none;}
-  .btn-settings:hover{border-color:rgba(255,255,255,0.55);color:white;background:rgba(255,255,255,0.18);}
+  /* ── Level chips (inside settings) ── */
+  .level-chips{display:flex;gap:5px;flex-wrap:wrap;}
+  .level-chip{padding:4px 14px;border-radius:20px;font-size:0.82rem;font-weight:700;cursor:pointer;transition:all 0.15s;border:1.5px solid var(--parchment);color:var(--text-muted);background:transparent;user-select:none;}
+  .level-chip.active{background:var(--teal);border-color:var(--teal);color:white;box-shadow:0 1px 4px rgba(42,107,107,0.25);}
+  .level-chip:hover:not(.active){border-color:var(--teal-light);color:var(--teal);background:rgba(42,107,107,0.05);}
+
+  /* ── Settings modal ── */
+  .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(42,32,24,0.45);z-index:1000;align-items:center;justify-content:center;padding:20px;}
+  .modal-backdrop.open{display:flex;}
+  .modal-window{background:var(--cream);border-radius:var(--radius);box-shadow:0 8px 40px rgba(42,32,24,0.28);width:100%;max-width:680px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;border:1.5px solid var(--parchment);}
+  .modal-header{display:flex;align-items:center;padding:16px 22px;background:#3D5C63;flex-shrink:0;}
+  .modal-header .modal-title{font-family:'Trebuchet MS',Verdana,sans-serif;font-size:1.15rem;font-weight:700;color:white;flex:1;}
+  .modal-close{width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,0.15);color:white;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;line-height:1;}
+  .modal-close:hover{background:rgba(255,255,255,0.30);}
+  .modal-body{overflow-y:auto;flex:1;}
+  .settings-grid{display:grid;grid-template-columns:1fr;gap:0;}
+  .acc-section{border-bottom:1px solid var(--parchment);}
+  .acc-header{display:flex;align-items:center;gap:10px;padding:11px 18px;cursor:pointer;user-select:none;font-weight:700;font-size:0.83rem;letter-spacing:0.05em;text-transform:uppercase;color:var(--teal-dark);transition:background 0.12s;}
+  .acc-header:hover{background:var(--cream-dark);}
+  .acc-header .acc-chevron{margin-left:auto;font-size:0.85rem;transition:transform 0.2s;color:var(--text-muted);}
+  .acc-header.open .acc-chevron{transform:rotate(180deg);}
+  .acc-header .acc-val{font-size:0.77rem;color:var(--text-muted);font-weight:600;margin-left:4px;font-family:Verdana,sans-serif;text-transform:none;letter-spacing:0;}
+  .acc-body{max-height:0;overflow:hidden;transition:max-height 0.22s ease;background:var(--cream);}
+  .acc-body.open{max-height:500px;}
+  .acc-content{padding:12px 18px 16px;}
+  .form-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .form-row:last-child{margin-bottom:0;}
+  .form-row label{font-size:0.82rem;color:var(--text-muted);font-weight:700;min-width:80px;}
+  select,input[type=range],input[type=number]{font-family:Verdana,sans-serif;font-size:0.88rem;color:var(--text);background:var(--cream);border:1.5px solid var(--parchment);border-radius:8px;padding:5px 10px;outline:none;transition:border-color 0.15s;}
+  select:focus,input[type=number]:focus{border-color:var(--teal);}
+  input[type=range]{-webkit-appearance:none;height:6px;background:var(--parchment);border:none;border-radius:3px;padding:0;cursor:pointer;flex:1;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;background:var(--teal);border-radius:50%;cursor:pointer;}
+  input[type=number]{width:70px;text-align:center;}
+  .val-badge{font-size:0.82rem;color:var(--teal);font-weight:700;min-width:38px;text-align:right;}
+  .radio-group{display:flex;gap:6px;flex-wrap:wrap;}
+  .radio-chip{padding:4px 12px;border-radius:20px;border:1.5px solid var(--parchment);font-size:0.8rem;font-weight:700;cursor:pointer;transition:all 0.12s;user-select:none;color:var(--text-muted);}
+  .radio-chip:hover:not(.selected){border-color:var(--teal-light);color:var(--teal);background:rgba(42,107,107,0.05);}
+  .radio-chip.selected{background:var(--teal);border-color:var(--teal);color:white;box-shadow:0 1px 4px rgba(42,107,107,0.25);}
+  .info-note{font-size:0.75rem;color:var(--amber);margin-top:6px;font-weight:600;}
+
+  /* ── Latency calibration widget ── */
+  .cal-lights{display:flex;gap:10px;justify-content:center;margin:10px 0 14px;}
+  .cal-light{width:28px;height:28px;border-radius:50%;background:var(--parchment);border:2px solid var(--cream-dark);transition:background 0.04s,box-shadow 0.04s;}
+  .cal-light.flash{background:#E9C84D;box-shadow:0 0 10px 3px rgba(233,200,77,0.6);}
+  .cal-desc{font-size:0.78rem;color:var(--text-muted);text-align:center;margin-bottom:10px;line-height:1.4;}
+  .cal-btn{padding:5px 18px;border-radius:20px;border:1.5px solid var(--teal);background:transparent;color:var(--teal);font-size:0.8rem;font-weight:700;cursor:pointer;transition:all 0.12s;}
+  .cal-btn:hover{background:var(--teal);color:white;}
+  .cal-btn.running{background:var(--teal);color:white;}
+
+  /* ── Portrait mode overlay ── */
+  .portrait-overlay{
+    display:none;position:fixed;inset:0;background:#1A3A41;z-index:9999;
+    flex-direction:column;align-items:center;justify-content:center;
+    gap:20px;padding:40px;text-align:center;
+  }
+  .portrait-overlay .po-icon{font-size:3.5rem;animation:rotate-hint 2s ease-in-out infinite;}
+  @keyframes rotate-hint{0%,100%{transform:rotate(0deg);}40%{transform:rotate(90deg);}60%{transform:rotate(90deg);}}
+  .portrait-overlay .po-title{font-family:'Trebuchet MS',Verdana,sans-serif;font-size:1.3rem;font-weight:700;color:#FFFAEF;}
+  .portrait-overlay .po-sub{font-size:0.85rem;color:rgba(255,250,239,0.6);line-height:1.5;}
+  @media(orientation:portrait) and (max-width:768px){.portrait-overlay{display:flex;}}
 
   /* ── Help modal ── */
   .help-modal-backdrop{display:none;position:fixed;inset:0;background:rgba(42,32,24,0.35);z-index:1000;align-items:center;justify-content:center;padding:20px;}
@@ -439,152 +607,99 @@ HOW TO CONTINUE DEVELOPMENT
 </style>
 </head>
 <body>
-<header class="app-header">
-  <div><h1>Bearly In Time</h1><div class="subtitle">Rhythm Reading Practise</div></div>
-</header>
-<div class="app-body">
-  <div class="card">
-    <div class="level-bar">
+<div id="app">
 
-      <div class="level-chips" id="levelChips"></div>
+  <!-- Count bar -->
+  <div id="countBar">
+    <button id="settingsBtn" onclick="openSettings()" aria-label="Settings">
+      <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+CjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+Cjxzdmcgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDc4IDc2IiB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHhtbDpzcGFjZT0icHJlc2VydmUiIHhtbG5zOnNlcmlmPSJodHRwOi8vd3d3LnNlcmlmLmNvbS8iIHN0eWxlPSJmaWxsLXJ1bGU6ZXZlbm9kZDtjbGlwLXJ1bGU6ZXZlbm9kZDtzdHJva2UtbGluZWNhcDpyb3VuZDtzdHJva2UtbGluZWpvaW46cm91bmQ7c3Ryb2tlLW1pdGVybGltaXQ6MS41OyI+CiAgICA8ZyB0cmFuc2Zvcm09Im1hdHJpeCgxLDAsMCwxLC0zNjAuMDAzLC0xOTAzLjUpIj4KICAgICAgICA8ZyB0cmFuc2Zvcm09Im1hdHJpeCgxLDAsMCwxLC0xNDcuNTE2LDY5MC4yMDQpIj4KICAgICAgICAgICAgPGcgaWQ9InNldHRpbmdzIj4KICAgICAgICAgICAgICAgIDxwYXRoIGQ9Ik01NTAuNzU3LDEyMTUuNjhMNTUyLjI5NCwxMjIxLjQxQzU1NS4yNjksMTIyMi4wMSA1NTguMTM5LDEyMjMuMDQgNTYwLjgxLDEyMjQuNDdMNTY1LjcxOCwxMjIxLjA2QzU2OC4zNjksMTIyMi43MyA1NzAuNzg5LDEyMjQuNzQgNTcyLjkxOSwxMjI3LjAyTDU3MC4zNjYsMTIzMi4zOEM1NzIuMjUzLDEyMzQuNzMgNTczLjc3OSwxMjM3LjM0IDU3NC44OTcsMTI0MC4xM0w1ODAuODc5LDEyNDAuNjNDNTgxLjgyLDEyNDMuNTkgNTgyLjM2OSwxMjQ2LjY2IDU4Mi41MTIsMTI0OS43N0w1NzcuMDYzLDEyNTIuMjZDNTc2Ljk3OSwxMjU1LjI1IDU3Ni40NDgsMTI1OC4yMiA1NzUuNDksMTI2MS4wN0w1NzkuNzQ3LDEyNjUuMjRDNTc4LjUzOCwxMjY4LjExIDU3Ni45NTgsMTI3MC44MSA1NzUuMDQ3LDEyNzMuMjhMNTY5LjI1MywxMjcxLjczQzU2Ny4yMzYsMTI3My45NyA1NjQuODk3LDEyNzUuOTEgNTYyLjMxLDEyNzcuNDhMNTYyLjg1MSwxMjgzLjM4QzU2MC4wNTcsMTI4NC44MSA1NTcuMDg4LDEyODUuODggNTU0LjAxOCwxMjg2LjU1TDU1MC41ODgsMTI4MS42OUM1NDcuNTg0LDEyODIuMTMgNTQ0LjUzLDEyODIuMTMgNTQxLjUyNiwxMjgxLjY5TDUzOC4wOTcsMTI4Ni41NUM1MzUuMDI2LDEyODUuODggNTMyLjA1NywxMjg0LjgxIDUyOS4yNjMsMTI4My4zOEw1MjkuODA0LDEyNzcuNDhDNTI3LjIxNywxMjc1LjkxIDUyNC44NzgsMTI3My45NyA1MjIuODYyLDEyNzEuNzNMNTE3LjA2NywxMjczLjI4QzUxNS4xNTYsMTI3MC44MSA1MTMuNTc2LDEyNjguMTEgNTEyLjM2NywxMjY1LjI0TDUxNi42MjUsMTI2MS4wN0M1MTUuNjY2LDEyNTguMjIgNTE1LjEzNiwxMjU1LjI1IDUxNS4wNTEsMTI1Mi4yNkw1MDkuNjAzLDEyNDkuNzdDNTA5Ljc0NSwxMjQ2LjY2IDUxMC4yOTQsMTI0My41OSA1MTEuMjM1LDEyNDAuNjNMNTE3LjIxNywxMjQwLjEzQzUxOC4zMzUsMTIzNy4zNCA1MTkuODYyLDEyMzQuNzMgNTIxLjc0OCwxMjMyLjM4TDUxOS4xOTUsMTIyNy4wMkM1MjEuMzI1LDEyMjQuNzQgNTIzLjc0NSwxMjIyLjczIDUyNi4zOTYsMTIyMS4wNkw1MzEuMzA0LDEyMjQuNDdDNTMzLjk3NiwxMjIzLjA0IDUzNi44NDUsMTIyMi4wMSA1MzkuODIsMTIyMS40MUw1NDEuMzU3LDEyMTUuNjhDNTQ0LjQ3NywxMjE1LjI4IDU0Ny42MzcsMTIxNS4yOCA1NTAuNzU3LDEyMTUuNjhaTTU0Ni4wNTcsMTI0NC4yQzU1MC4wODUsMTI0NC4yIDU1My4zNTYsMTI0Ny40MyA1NTMuMzU2LDEyNTEuNEM1NTMuMzU2LDEyNTUuMzggNTUwLjA4NSwxMjU4LjYxIDU0Ni4wNTcsMTI1OC42MUM1NDIuMDI5LDEyNTguNjEgNTM4Ljc1OSwxMjU1LjM4IDUzOC43NTksMTI1MS40QzUzOC43NTksMTI0Ny40MyA1NDIuMDI5LDEyNDQuMiA1NDYuMDU3LDEyNDQuMloiIHN0eWxlPSJmaWxsOm5vbmU7c3Ryb2tlOnJnYigyNTUsMjUwLDIzOSk7c3Ryb2tlLXdpZHRoOjQuMTdweDsiLz4KICAgICAgICAgICAgPC9nPgogICAgICAgIDwvZz4KICAgIDwvZz4KPC9zdmc+Cg==" alt="Settings" style="width:26px;height:26px;display:block;">
+    </button>
+    <div id="beatNums"></div>
+  </div>
 
+  <!-- Stave area — tap for new rhythm -->
+  <div id="staveArea">
+    <div id="rhythmStaves"></div>
+  </div>
+
+  <!-- Feedback strip -->
+  <div id="feedbackStrip"></div>
+
+  <!-- Bear zone -->
+  <div id="bearZone">
+    <div class="side-pad" id="leftPad"></div>
+    <div id="bearsCenter">
+      <!-- Computer bear -->
+      <div class="bear-stage" id="bearStage">
+        <div class="bear-state active" id="bearJustBear"><img id="imgBearJustBear" src="" alt="Bear"></div>
+        <div class="bear-state" id="bearDrumReady"><img id="imgBearDrumReady" src="" alt="Bear drum ready"></div>
+        <div class="bear-state" id="bearDrumMotion"><img id="imgBearDrumMotion" src="" alt="Bear drum motion"></div>
+        <div class="bear-state" id="bearLeftStick"><img id="imgBearLeftStick" src="" alt="Bear left stick"></div>
+        <div class="bear-state" id="bearRightStick"><img id="imgBearRightStick" src="" alt="Bear right stick"></div>
+      </div>
+      <!-- User bear (box bear) -->
+      <div class="bear-stage" id="boxBearStage">
+        <div class="bear-state active" id="boxBearJustBear"><img id="imgBoxBearJustBear" src="" alt="Box bear"></div>
+        <div class="bear-state" id="boxBearDrumReady"><img id="imgBoxBearDrumReady" src="" alt="Box bear drum ready"></div>
+        <div class="bear-state" id="boxBearDrumMotion"><img id="imgBoxBearDrumMotion" src="" alt="Box bear drum motion"></div>
+        <div class="bear-state" id="boxBearLeftStick"><img id="imgBoxBearLeftStick" src="" alt="Box bear left stick"></div>
+        <div class="bear-state" id="boxBearRightStick"><img id="imgBoxBearRightStick" src="" alt="Box bear right stick"></div>
+      </div>
     </div>
-    <!-- Beat bar: slides in during playback, pips aligned to beat grid -->
-    <div class="beat-bar" id="beatBar">
-      <div class="beat-bar-inner" id="beatBarInner">
-        <span id="repeatCounter" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:0.78rem;font-weight:700;color:#FFFAEF;z-index:1;display:none;white-space:nowrap;"></span>
-        <div id="beatDisplay"></div>
-      </div>
-    </div>
-    <div class="main-layout">
-      <div class="main-layout-inner">
-      <!-- Bear column -->
-      <div class="bear-col">
-        <div class="bear-stage">
-          <div class="bear-state active" id="bearJustBear"><img id="imgBearJustBear" src="" alt="Bear"></div>
-          <div class="bear-state" id="bearDrumReady"><img id="imgBearDrumReady" src="" alt="Bear drum ready"></div>
-          <div class="bear-state" id="bearDrumMotion"><img id="imgBearDrumMotion" src="" alt="Bear drum motion"></div>
-          <div class="bear-state" id="bearLeftStick"><img id="imgBearLeftStick" src="" alt="Bear left stick"></div>
-          <div class="bear-state" id="bearRightStick"><img id="imgBearRightStick" src="" alt="Bear right stick"></div>
-        </div>
-        <!-- Hidden JS targets — no visual output -->
-        <span class="hidden-for-js" id="bearLabel"></span>
-        <span class="hidden-for-js" id="statusText"></span>
-        <span class="hidden-for-js" id="repeatInfo"></span>
-        <span class="hidden-for-js" id="countinDisplay"></span>
-      </div>
-      <!-- Staves column -->
-      <div class="staves-col">
-        <div class="rhythm-area">
-          <div class="stave-wrapper">
-            <div id="rhythmStaves"></div>
-            <div class="welcome-overlay" id="welcomeOverlay" onclick="dismissWelcome()">
-              <div class="welcome-close">&#x2715;</div>
-              <div class="welcome-tap"><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+CjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+Cjxzdmcgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDEyNyAxMjciIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSIgeG1sbnM6c2VyaWY9Imh0dHA6Ly93d3cuc2VyaWYuY29tLyIgc3R5bGU9ImZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO3N0cm9rZS1saW5lY2FwOnJvdW5kO3N0cm9rZS1saW5lam9pbjpyb3VuZDtzdHJva2UtbWl0ZXJsaW1pdDoxLjU7Ij4KICAgIDxnIHRyYW5zZm9ybT0ibWF0cml4KDEsMCwwLDEsLTE3Mi4yNTYsLTc2Mi4yODUpIj4KICAgICAgICA8ZyB0cmFuc2Zvcm09Im1hdHJpeCgwLjczNzE3MiwwLDAsMC43MzcxNzIsNDYuMzY4OCwyMDEuNDQ1KSI+CiAgICAgICAgICAgIDxnIHRyYW5zZm9ybT0ibWF0cml4KDEuMTQ3MTMsLTEuMTQ3MTMsMS4xNDcxMywxLjE0NzEzLC04MDIuODE3LC0yMi43Njg2KSI+CiAgICAgICAgICAgICAgICA8ZyB0cmFuc2Zvcm09Im1hdHJpeCgwLjk3MzUwNSwwLjk3MzUwNSwtMC45NzM1MDUsMC45NzM1MDUsNzU0LjM0NiwtMjU0Ljg0MykiPgogICAgICAgICAgICAgICAgICAgIDxwYXRoIGQ9Ik0yMDQuMzMxLDkwOS40NDlMMTgxLjg5LDkwOS40NDkiIHN0eWxlPSJmaWxsOm5vbmU7c3Ryb2tlOnJnYig2NywxMjMsMTQ0KTtzdHJva2Utd2lkdGg6NS4wNnB4OyIvPgogICAgICAgICAgICAgICAgPC9nPgogICAgICAgICAgICAgICAgPGcgdHJhbnNmb3JtPSJtYXRyaXgoLTEuMjY0NjJlLTE1LDEuMzc2NzQsLTEuMzc2NzQsLTEuMjY0NjJlLTE1LDEzMzQuNzYsNTQxLjUxMykiPgogICAgICAgICAgICAgICAgICAgIDxwYXRoIGQ9Ik0yMDQuMzMxLDkwOS40NDlMMTgxLjg5LDkwOS40NDkiIHN0eWxlPSJmaWxsOm5vbmU7c3Ryb2tlOnJnYig2NywxMjMsMTQ0KTtzdHJva2Utd2lkdGg6NS4wNnB4OyIvPgogICAgICAgICAgICAgICAgPC9nPgogICAgICAgICAgICAgICAgPGcgdHJhbnNmb3JtPSJtYXRyaXgoLTEuMzc2NzQsLTQuNjI3MzFlLTE1LDQuNjI3MzFlLTE1LC0xLjM3Njc0LDM4My44OCwyMDkzLjAyKSI+CiAgICAgICAgICAgICAgICAgICAgPHBhdGggZD0iTTIwNC4zMzEsOTA5LjQ0OUwxODEuODksOTA5LjQ0OSIgc3R5bGU9ImZpbGw6bm9uZTtzdHJva2U6cmdiKDY3LDEyMywxNDQpO3N0cm9rZS13aWR0aDo1LjA2cHg7Ii8+CiAgICAgICAgICAgICAgICA8L2c+CiAgICAgICAgICAgICAgICA8ZyB0cmFuc2Zvcm09Im1hdHJpeCgtMC45NzM1MDUsMC45NzM1MDUsLTAuOTczNTA1LC0wLjk3MzUwNSwxMTgyLjMxLDE1MTYuMTYpIj4KICAgICAgICAgICAgICAgICAgICA8cGF0aCBkPSJNMjA0LjMzMSw5MDkuNDQ5TDE4MS44OSw5MDkuNDQ5IiBzdHlsZT0iZmlsbDpub25lO3N0cm9rZTpyZ2IoNjcsMTIzLDE0NCk7c3Ryb2tlLXdpZHRoOjUuMDZweDsiLz4KICAgICAgICAgICAgICAgIDwvZz4KICAgICAgICAgICAgICAgIDxnIHRyYW5zZm9ybT0ibWF0cml4KDEuMzc2NzQsNC4wMTU5MWUtMTUsLTQuMDE1OTFlLTE1LDEuMzc2NzQsLTIxOC4xMjIsLTQxMS4xMzQpIj4KICAgICAgICAgICAgICAgICAgICA8cGF0aCBkPSJNMjA0LjMzMSw5MDkuNDQ5TDE4MS44OSw5MDkuNDQ5IiBzdHlsZT0iZmlsbDpub25lO3N0cm9rZTpyZ2IoNjcsMTIzLDE0NCk7c3Ryb2tlLXdpZHRoOjUuMDZweDsiLz4KICAgICAgICAgICAgICAgIDwvZz4KICAgICAgICAgICAgPC9nPgogICAgICAgICAgICA8ZyB0cmFuc2Zvcm09Im1hdHJpeCgwLjU2OTQzNSwtMC41Njk0MzUsMC41OTQ2NDUsMC41OTQ2NDUsLTQxMC4wNTQsNDg5Ljg3NikiPgogICAgICAgICAgICAgICAgPHBhdGggZD0iTTI1OS44NzMsOTM4LjcyNkwyMjQuNDA5LDk0OS40NDZMMjcxLjY1NCw4NjYuNDExTDMxOC44OTgsOTQ5LjQ0NkwyODIuNjA2LDkzOC43NzlMMjgyLjYwNiw5NjUuMjgxTDI1OS44NzMsOTY1LjI4MUwyNTkuODczLDkzOC43MjZaIiBzdHlsZT0iZmlsbDpub25lO3N0cm9rZTpyZ2IoNjcsMTIzLDE0NCk7c3Ryb2tlLXdpZHRoOjEzLjczcHg7Ii8+CiAgICAgICAgICAgIDwvZz4KICAgICAgICA8L2c+CiAgICA8L2c+Cjwvc3ZnPgo=" alt="" style="width:48px;height:48px;"></div>
-              <div class="welcome-main">Tap anywhere on the rhythm<br>to play &amp; stop</div>
-              <div class="welcome-main" style="font-family:Verdana,sans-serif;font-weight:normal;">Go to Settings to change play style, bars, repeats, and more!</div>
-              <div class="welcome-hint">You can turn this message off in Settings.</div>
-            </div>
-          </div>
-          <div class="rhythm-area-header">
-            <button class="new-rhythm-btn" onclick="generateNewRhythm()">New Rhythm</button>
-          </div>
-        </div>
-      </div>
-      </div>
-      <!-- Transport bar — full width, spanning below bear and staves -->
-      <div class="transport">
-        <div class="transport-controls">
-          <div class="transport-btns">
-            <button class="btn-settings" onclick="openHelp()" title="Help" style="padding:6px 10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
-            <button class="btn-settings" onclick="openSettings()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Settings</button>
+    <!-- Count-in overlay — floats over bear zone, hidden except during count-in -->
+    <div id="countInOverlay"><span id="countInNum"></span></div>
+    <div class="side-pad" id="rightPad"></div>
+  </div>
 
+  <!-- Hidden JS targets -->
+  <span class="hidden-for-js" id="bearLabel"></span>
+  <span class="hidden-for-js" id="statusText"></span>
+  <span class="hidden-for-js" id="repeatInfo"></span>
+  <span class="hidden-for-js" id="countinDisplay"></span>
+  <span class="hidden-for-js" id="repeatCounter"></span>
+
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-backdrop" id="settingsModal" onclick="handleBackdropClick(event)">
+  <div class="modal-window">
+    <div class="modal-header">
+      <span class="modal-title">Settings</span>
+      <button class="modal-close" onclick="closeSettings()" aria-label="Close">&#x2715;</button>
+    </div>
+    <div class="modal-body">
+      <div class="settings-grid">
+        <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Level <span class="acc-val" id="valLevel">Level 4</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="level-chips" id="levelChips"></div></div></div></div>
+        <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Tempo <span class="acc-val" id="valTempo">80 bpm</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="form-row"><label>BPM</label><input type="range" id="tempoSlider" min="40" max="180" value="80" oninput="updateTempo(this.value)"><input type="number" id="tempoNum" min="40" max="180" value="80" oninput="updateTempo(this.value)" style="width:62px"></div></div></div></div>
+        <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Time Signature <span class="acc-val" id="valTimeSig">4/4</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="radio-group" id="timeSigGroup"><div class="radio-chip" data-val="2/4" onclick="setTimeSig('2/4')">2/4</div><div class="radio-chip" data-val="3/4" onclick="setTimeSig('3/4')">3/4</div><div class="radio-chip selected" data-val="4/4" onclick="setTimeSig('4/4')">4/4</div><div class="radio-chip" data-val="5/4" onclick="setTimeSig('5/4')">5/4</div></div></div></div></div>
+        <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Count In <span class="acc-val" id="valCountIn">1 bar</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="form-row"><label>Bars</label><div class="radio-group" id="countInBarsGroup"><div class="radio-chip selected" data-val="1" onclick="setCountInBars(1)">1 bar</div><div class="radio-chip" data-val="2" onclick="setCountInBars(2)">2 bars</div></div></div></div></div></div>
+        <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Metronome <span class="acc-val" id="valMetronome">Both</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="form-row"><div class="radio-group" id="metronomeGroup"><div class="radio-chip selected" data-val="both" onclick="setMetronome('both')">Visual + Sound</div><div class="radio-chip" data-val="visual" onclick="setMetronome('visual')">Visual only</div><div class="radio-chip" data-val="sound" onclick="setMetronome('sound')">Sound only</div><div class="radio-chip" data-val="none" onclick="setMetronome('none')">None</div></div></div><div class="form-row"><label>Volume</label><input type="range" id="metronomeVol" min="0" max="100" value="60" oninput="updateMetronomeVol(this.value)"><span class="val-badge" id="metronomeVolVal">60%</span></div></div></div></div>
+        <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Repeats <span class="acc-val" id="valRepeats">No repeat</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="radio-group" id="repeatsGroup"><div class="radio-chip selected" data-val="0" onclick="setRepeats(0)">No repeat</div><div class="radio-chip" data-val="1" onclick="setRepeats(1)">x2 total</div><div class="radio-chip" data-val="3" onclick="setRepeats(3)">x4 total</div><div class="radio-chip" data-val="7" onclick="setRepeats(7)">x8 total</div><div class="radio-chip" data-val="99" onclick="setRepeats(99)">&#8734;</div></div></div></div></div>
+        <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Drum Volume <span class="acc-val" id="valAssistVol">80%</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="form-row"><label>Volume</label><input type="range" id="assistVol" min="0" max="100" value="80" oninput="updateAssistVol(this.value)"><span class="val-badge" id="assistVolVal">80%</span></div></div></div></div>
+        <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Assistance <span class="acc-val" id="valAssistance">Beat &amp; Bar on</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="form-row"><label>Beat highlight</label><div class="radio-group" id="beatHighlightGroup"><div class="radio-chip selected" data-val="on" onclick="setBeatHighlight('on')">On</div><div class="radio-chip" data-val="off" onclick="setBeatHighlight('off')">Off</div></div></div><div class="form-row"><label>Bar highlight</label><div class="radio-group" id="barHighlightGroup"><div class="radio-chip selected" data-val="on" onclick="setBarHighlight('on')">On</div><div class="radio-chip" data-val="off" onclick="setBarHighlight('off')">Off</div></div></div></div></div></div>
+        <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Audio Latency <span class="acc-val" id="valLatency">0 ms</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content">
+          <p class="cal-desc">Adjust the slider until the flashing lights and sounds feel perfectly in sync. Move right if the sound arrives after the flash; left if before.</p>
+          <div class="cal-lights">
+            <div class="cal-light" id="calLight0"></div>
+            <div class="cal-light" id="calLight1"></div>
+            <div class="cal-light" id="calLight2"></div>
+            <div class="cal-light" id="calLight3"></div>
           </div>
-          <div class="transport-toggles">
-            <div class="tempo-widget">
-            <span class="tempo-label">Tempo</span>
-            <input class="tempo-slider" id="tempoTransport" type="range" min="40" max="180" value="80" oninput="updateTempo(this.value)">
-            <span class="tempo-val" id="tempoTransportVal">80 bpm</span>
+          <div class="form-row"><label>Offset</label><input type="range" id="latencySlider" min="-200" max="200" value="0" oninput="updateLatency(this.value)"><span class="val-badge" id="latencyVal">0 ms</span></div>
+          <div class="form-row" style="justify-content:center;margin-top:6px;">
+            <button class="cal-btn" id="calBtn" onclick="toggleCalibration()">Start</button>
           </div>
-            <div class="toggle-pill active" id="toggleDrum"         title="Drum sound" onclick="toggleDrumPill()"><img src="assets/svg/ui/icon_drum.svg" alt="Drum"></div>
-            <div class="toggle-pill active" id="toggleMetronome"    title="Metronome" onclick="toggleMetronomePill()"><img src="assets/svg/ui/icon_metronome.svg" alt="Metronome"></div>
-            <div class="toggle-pill active" id="toggleBarHighlight" title="Bar highlight" onclick="toggleBarHighlightPill()"><img src="assets/svg/ui/icon_bar_highlight.svg" alt="Bar highlight"></div>
-            <div class="toggle-pill active" id="toggleNoteHighlight" title="Note highlight" onclick="toggleNoteHighlightPill()"><img src="assets/svg/ui/icon_note_highlight.svg" alt="Note highlight"></div>
-          </div>
-        </div>
+        </div></div></div>
       </div>
     </div>
   </div>
-  <!-- Help Modal -->
-  <div class="help-modal-backdrop" id="helpModal" onclick="handleHelpBackdrop(event)">
-    <div class="help-window">
-      <div class="help-header">
-        <span class="help-title">How to use Rhythm Reader</span>
-        <button class="help-close" onclick="closeHelp()" aria-label="Close">&#x2715;</button>
-      </div>
-      <div class="help-body">
-        <div class="help-section-title">Playing</div>
-        <div class="help-row">
-          <div class="help-icon"><img src="assets/svg/ui/icon_tap.svg" alt="Tap"></div>
-          <div class="help-desc"><strong>Tap the rhythm</strong><span>Tap anywhere on the notation to start and stop playing.</span></div>
-        </div>
-        <div class="help-row">
-          <div class="help-icon" style="background:var(--cream);border-color:var(--teal-light);border-radius:10px;font-size:0.7rem;font-weight:700;color:var(--teal);padding:0 6px;width:auto;min-width:40px;">New Rhythm</div>
-          <div class="help-desc"><strong>New Rhythm</strong><span>Generate a fresh rhythm to read and practise.</span></div>
-        </div>
-        <div class="help-section-title">Sound</div>
-        <div class="help-row">
-          <div class="help-icon"><img src="assets/svg/ui/icon_drum.svg" alt="Drum"></div>
-          <div class="help-desc"><strong>Drum</strong><span>Turn the drum sound on or off. When on, a drum plays along with the rhythm.</span></div>
-        </div>
-        <div class="help-row">
-          <div class="help-icon"><img src="assets/svg/ui/icon_metronome.svg" alt="Metronome"></div>
-          <div class="help-desc"><strong>Metronome</strong><span>Turn the metronome click on or off to help you keep a steady beat.</span></div>
-        </div>
-        <div class="help-row">
-          <div class="help-icon help-icon-settings" style="background:white;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
-          <div class="help-desc"><strong>Settings</strong><span>Adjust tempo, time signature, count-in, repeats, and more.</span></div>
-        </div>
-        <div class="help-section-title">Display</div>
-        <div class="help-row">
-          <div class="help-icon"><img src="assets/svg/ui/icon_bar_highlight.svg" alt="Bar highlight"></div>
-          <div class="help-desc"><strong>Bar Highlight</strong><span>Highlights the current bar while playing so you can follow along easily.</span></div>
-        </div>
-        <div class="help-row">
-          <div class="help-icon"><img src="assets/svg/ui/icon_note_highlight.svg" alt="Note highlight"></div>
-          <div class="help-desc"><strong>Note Highlight</strong><span>Highlights each note as it plays — great for learning where you are in the rhythm.</span></div>
-        </div>
-        <div class="help-row">
-          <div class="help-icon" style="background:white;border:none;flex-direction:column;gap:4px;">
-            <div class="help-tempo-preview"><div class="help-tempo-preview-track"><div class="help-tempo-preview-thumb"></div></div></div>
-          </div>
-          <div class="help-desc"><strong>Tempo Slider</strong><span>Drag left to slow down, right to speed up. The number shows the current speed in BPM.</span></div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <!-- Settings Modal -->
-  <div class="modal-backdrop" id="settingsModal" onclick="handleBackdropClick(event)">
-    <div class="modal-window">
-      <div class="modal-header">
-        <span class="modal-title">Settings</span>
-        <button class="modal-close" onclick="closeSettings()" aria-label="Close">&#x2715;</button>
-      </div>
-      <div class="modal-body">
-        <div class="settings-grid">
-          <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Bars <span class="acc-val" id="valBars">2 bars</span><span class="acc-chevron">▼</span></div><div class="acc-body"><div class="acc-content"><div class="radio-group" id="barsGroup"><div class="radio-chip" data-val="1" onclick="setSetting('bars',1,this)">1 bar</div><div class="radio-chip selected" data-val="2" onclick="setSetting('bars',2,this)">2 bars</div><div class="radio-chip" data-val="4" onclick="setSetting('bars',4,this)">4 bars</div></div></div></div></div>
-          <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Tempo <span class="acc-val" id="valTempo">80 bpm</span><span class="acc-chevron">▼</span></div><div class="acc-body"><div class="acc-content"><div class="form-row"><label>BPM</label><input type="range" id="tempoSlider" min="40" max="180" value="80" oninput="updateTempo(this.value)"><input type="number" id="tempoNum" min="40" max="180" value="80" oninput="updateTempo(this.value)" style="width:62px"></div></div></div></div>
-          <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Time Signature <span class="acc-val" id="valTimeSig">4/4</span><span class="acc-chevron">▼</span></div><div class="acc-body"><div class="acc-content"><div class="radio-group" id="timeSigGroup"><div class="radio-chip" data-val="2/4" onclick="setTimeSig('2/4',this)">2/4</div><div class="radio-chip" data-val="3/4" onclick="setTimeSig('3/4',this)">3/4</div><div class="radio-chip selected" data-val="4/4" onclick="setTimeSig('4/4',this)">4/4</div><div class="radio-chip" data-val="5/4" onclick="setTimeSig('5/4',this)">5/4</div></div></div></div></div>
-          <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Count In <span class="acc-val" id="valCountIn">1 bar · Visual+Sound</span><span class="acc-chevron">▼</span></div><div class="acc-body"><div class="acc-content"><div class="form-row"><label>Bars</label><div class="radio-group" id="countInBarsGroup"><div class="radio-chip selected" data-val="1" onclick="setCountInBars(1,this)">1 bar</div><div class="radio-chip" data-val="2" onclick="setCountInBars(2,this)">2 bars</div></div></div><div class="form-row"><label>Type</label><div class="radio-group" id="countInTypeGroup"><div class="radio-chip" data-val="visual" onclick="setCountInType('visual',this)">Visual</div><div class="radio-chip" data-val="sound" onclick="setCountInType('sound',this)">Sound</div><div class="radio-chip selected" data-val="both" onclick="setCountInType('both',this)">Both</div></div></div></div></div></div>
-          <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Metronome <span class="acc-val" id="valMetronome">On</span><span class="acc-chevron">▼</span></div><div class="acc-body"><div class="acc-content"><div class="form-row"><label>On / Off</label><div class="radio-group" id="metronomeGroup"><div class="radio-chip selected" data-val="on" onclick="setMetronome('on',this)">On</div><div class="radio-chip" data-val="off" onclick="setMetronome('off',this)">Off</div></div></div><div class="form-row"><label>Volume</label><input type="range" id="metronomeVol" min="0" max="100" value="60" oninput="updateMetronomeVol(this.value)"><span class="val-badge" id="metronomeVolVal">60%</span></div></div></div></div>
-          <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Repeats <span class="acc-val" id="valRepeats">No repeat</span><span class="acc-chevron">▼</span></div><div class="acc-body"><div class="acc-content"><div class="radio-group" id="repeatsGroup"><div class="radio-chip selected" data-val="0" onclick="setRepeats(0,this)">No repeat</div><div class="radio-chip" data-val="1" onclick="setRepeats(1,this)">×2 total</div><div class="radio-chip" data-val="3" onclick="setRepeats(3,this)">×4 total</div><div class="radio-chip" data-val="7" onclick="setRepeats(7,this)">×8 total</div><div class="radio-chip" data-val="99" onclick="setRepeats(99,this)">∞</div></div><div class="info-note" id="repeatsNote" style="display:none">Not active in Listen First / Play First mode.</div></div></div></div>
-          <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Assistance Volume <span class="acc-val" id="valAssistVol">80%</span><span class="acc-chevron">▼</span></div><div class="acc-body"><div class="acc-content"><div class="form-row"><label>Volume</label><input type="range" id="assistVol" min="0" max="100" value="80" oninput="updateAssistVol(this.value)"><span class="val-badge" id="assistVolVal">80%</span></div></div></div></div>
-          <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Assistance Mode <span class="acc-val" id="valAssistMode">Duet</span><span class="acc-chevron">▼</span></div><div class="acc-body"><div class="acc-content"><div class="radio-group" id="assistModeGroup"><div class="radio-chip selected" data-val="duet" onclick="setAssistMode('duet',this)">Duet</div><div class="radio-chip" data-val="listen" onclick="setAssistMode('listen',this)">Listen First</div><div class="radio-chip" data-val="play" onclick="setAssistMode('play',this)">Play First</div></div><div class="info-note" id="assistModeNote" style="display:none"></div></div></div></div>
-          <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Welcome Message <span class="acc-val" id="valWelcome">On</span><span class="acc-chevron">▼</span></div><div class="acc-body"><div class="acc-content"><div class="radio-group" id="welcomeGroup"><div class="radio-chip selected" data-val="on" onclick="setWelcome('on')">On</div><div class="radio-chip" data-val="off" onclick="setWelcome('off')">Off</div></div></div></div></div>
-        </div>
-      </div>
-    </div>
-  </div>
+</div>
+
+<!-- Portrait mode overlay -->
+<div class="portrait-overlay">
+  <div class="po-icon">&#128241;</div>
+  <div class="po-title">Rotate your device</div>
+  <div class="po-sub">This app works best in landscape mode.<br>Turn your phone sideways to get started!</div>
 </div>
 <script>
 const SVGS = {
@@ -594,6 +709,11 @@ const SVGS = {
   "bear_just_bear": "assets/svg/bear/bear_just_bear.svg",
   "bear_left_stick": "assets/svg/bear/bear_left_stick.svg",
   "bear_right_stick": "assets/svg/bear/bear_right_stick.svg",
+  "box_bear_just_bear": "assets/svg/bear/box_bear_just_bear.svg",
+  "box_bear_drum_ready": "assets/svg/bear/box_bear_drum_ready.svg",
+  "box_bear_drum_motion": "assets/svg/bear/box_bear_drum_motion.svg",
+  "box_bear_left_stick": "assets/svg/bear/box_bear_left_stick.svg",
+  "box_bear_right_stick": "assets/svg/bear/box_bear_right_stick.svg",
   "count_1_active": "assets/svg/ui/count_1_active.svg",
   "count_1_passive": "assets/svg/ui/count_1_passive.svg",
   "count_2_active": "assets/svg/ui/count_2_active.svg",
@@ -648,6 +768,11 @@ function loadImages(cb){
   document.getElementById('imgBearDrumMotion').src=SVGS['bear_drum_motion'];
   document.getElementById('imgBearLeftStick').src=SVGS['bear_left_stick'];
   document.getElementById('imgBearRightStick').src=SVGS['bear_right_stick'];
+  document.getElementById('imgBoxBearJustBear').src=SVGS['box_bear_just_bear'];
+  document.getElementById('imgBoxBearDrumReady').src=SVGS['box_bear_drum_ready'];
+  document.getElementById('imgBoxBearDrumMotion').src=SVGS['box_bear_drum_motion'];
+  document.getElementById('imgBoxBearLeftStick').src=SVGS['box_bear_left_stick'];
+  document.getElementById('imgBoxBearRightStick').src=SVGS['box_bear_right_stick'];
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -675,12 +800,10 @@ function loadImages(cb){
 const NOTE_H    = 44;    // note body display height (px) for all notes
 const NOTE_VBH  = 1182;  // standard SVG viewBox height
 
-// Beat slot width: must fit widest full-beat note AND widest half-beat note × 2
-// At NOTE_H=44: widest full ≈ 70.7px, widest half ≈ 69.6px → need ≥ 70.7 and ≥ 69.6×2=139.2
-// Half-beat pair needs the full BEAT_W. So BEAT_W must be ≥ widest_half × 2.
-// We use 148px which gives comfortable fit.
-const BEAT_W    = 148;   // px per crotchet beat slot
-const BAR_MARGIN = 14;   // px between barline and first beat slot, and after last slot
+// Beat slot width reduced to fit 2 bars side-by-side on a phone landscape screen.
+// At BEAT_W=88: widest full note ≈ 42px, widest half-beat pair ≈ 84px — fits comfortably.
+const BEAT_W    = 88;    // px per crotchet beat slot (reduced from 148 for 2-bar single-row layout)
+const BAR_MARGIN = 8;    // px between barline and first/last beat slot
 
 // Canvas / stave metrics
 const SY  = 86;   // staff line Y (space above for triplet numbers)
@@ -802,7 +925,7 @@ const LEVELS=[
   {num:8,label:'Level 8',desc:'+ triplets',                 pool:['ta','sah','ti-ti','ti','si','tika-tika','tika-ti','ti-tika','timka','tika','tahm','sahm','tika-ka','seka-ti','triplet','triola','triola-ti','ti-triola','triola-triola']},
 ];
 
-const S={bars:2,tempo:80,timeSig:'4/4',countInBars:1,countInType:'both',metronomeOn:true,metronomeVol:0.6,repeats:0,assistVol:0.8,assistMode:'duet',level:4,showWelcome:true};
+const S={bars:2,tempo:80,timeSig:'4/4',countInBars:1,metronome:'both',metronomeVol:0.6,repeats:0,assistVol:0.8,assistMode:'duet',level:4,latencyOffset:0};
 let drumEnabled=true;
 let barHighlightEnabled=true;
 let noteHighlightEnabled=true;
@@ -860,6 +983,7 @@ function generateBar(beatsAvail){
 }
 function generateNewRhythm(){
   if(PS.playing||PS.paused)handleStop();
+  lastDots=null;prevDots=null;
   currentRhythm=[];
   for(let b=0;b<S.bars;b++)currentRhythm.push(generateBar(bpb()));
   buildTimeline();
@@ -894,171 +1018,171 @@ function buildTimeline(){
 // For bar 0: notesStartX = PREFIX_W
 // For bars 1+: notesStartX = (small left margin after opening ||) + BAR_MARGIN
 
-let barCanvases = [];  // canvas elements, indexed by bar
+let barCanvases = [];  // both entries point to the same single canvas
 let notesStartX = [];  // x where beat 0 starts, per bar
 
-// Continuation row prefix: clef only (no time sig), same spacing pattern as row 0 minus tsig
-const CONT_PREFIX_W = PREFIX_W; // same as row 0 so beat 1 aligns across all bars
+// Width of the mid-barline gap between bar 0 and bar 1
+const MID_BL_GAP = 4; // px between closeX of bar 0 and notesStartX of bar 1
 
-function barCanvasWidth(isFirst){
-  const B=bpb();
-  const prefix = isFirst ? PREFIX_W : CONT_PREFIX_W;
-  return prefix + B * BEAT_W + BAR_MARGIN + 14; // 14 = closing barline + right pad
+function totalCanvasWidth(containerW){
+  const B = bpb();
+  const blMaxW = blWidth(BL_REPEAT_W);
+  // bar 0: PREFIX_W + B*BEAT_W + BAR_MARGIN + mid barline
+  // bar 1: BAR_MARGIN + B*BEAT_W + BAR_MARGIN + final barline
+  const w = PREFIX_W + B*BEAT_W + BAR_MARGIN + blMaxW + MID_BL_GAP +
+            BAR_MARGIN + B*BEAT_W + BAR_MARGIN + blMaxW;
+  return Math.max(w, containerW||0);
 }
 
 function drawAllBars(){
-  const container=document.getElementById('rhythmStaves');
-  container.innerHTML='';
-  barCanvases=[];notesStartX=[];
+  const container = document.getElementById('rhythmStaves');
+  container.innerHTML = '';
+  barCanvases = []; notesStartX = [];
   const containerW = container.clientWidth || 700;
-
   const dpr = window.devicePixelRatio || 1;
-  for(let b=0;b<currentRhythm.length;b++){
-    const isFirst=(b===0);
-    const cw = Math.max(barCanvasWidth(isFirst), containerW); // at least full width
-    const canvas=document.createElement('canvas');
-    canvas.dataset.bar=b;
-    canvas.style.display='block';
-    canvas.style.width='100%';
-    canvas.style.cursor='pointer';
-    canvas.width=cw*dpr; canvas.height=CH*dpr;
-    canvas.style.height=CH+'px';
-    const ctx=canvas.getContext('2d');
-    ctx.scale(dpr,dpr);
-    canvas.addEventListener('click',()=>handlePlayStop());
-    container.appendChild(canvas);
-    barCanvases.push(canvas);
-    const nsx = isFirst ? PREFIX_W : CONT_PREFIX_W;
-    notesStartX.push(nsx);
-    drawBar(canvas, b, cw);
-  }
-  sizeNewRhythmBtn();
+  const B = bpb();
+  const blMaxW = blWidth(BL_REPEAT_W);
+
+  // notesStartX[0]: after clef + time sig + margin
+  const nsx0 = PREFIX_W;
+  // notesStartX[1]: after bar 0 notes + closing margin + mid barline + opening margin
+  const closeX0 = nsx0 + B * BEAT_W + BAR_MARGIN;
+  const nsx1 = closeX0 + blMaxW + MID_BL_GAP + BAR_MARGIN;
+
+  notesStartX.push(nsx0);
+  notesStartX.push(nsx1);
+
+  const cw = totalCanvasWidth(containerW);
+  const canvas = document.createElement('canvas');
+  canvas.style.display = 'block';
+  canvas.style.maxWidth = '100%';
+  canvas.style.margin = '0 auto';
+  canvas.style.cursor = 'pointer';
+  canvas.width = cw * dpr;
+  canvas.height = CH * dpr;
+  canvas.style.height = CH + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  canvas.addEventListener('click', () => handleStaveTap());
+  container.appendChild(canvas);
+
+  // Both bars share the same canvas
+  barCanvases.push(canvas);
+  barCanvases.push(canvas);
+
+  drawAllBarsOnCanvas(canvas, cw);
+  // Re-position count bar numbers to align with beat slots
+  positionBeatNums();
 }
 
-function drawBar(canvas, b, cw){
-  const ctx=canvas.getContext('2d');
-  ctx.clearRect(0,0,cw,CH);
-  const bar=currentRhythm[b]||[];
-  const isFirst=(b===0);
-  const B=bpb();
-  const nsx=notesStartX[b];
+function drawAllBarsOnCanvas(canvas, cw){
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  ctx.clearRect(0, 0, cw, CH);
+  const B = bpb();
+  const blMaxW = blWidth(BL_REPEAT_W);
 
-  // Staff line: runs from left edge to the right edge of the closing barline
-  const closeX=nsx+B*BEAT_W+BAR_MARGIN;
-  const blMaxW = blWidth(BL_REPEAT_W); // all barlines are right-aligned to closeX, so right edge = closeX + blMaxW
+  // Background
+  ctx.fillStyle = '#1A3A41';
+  ctx.fillRect(0, 0, cw, CH);
 
-  // Fill canvas background
-  ctx.fillStyle='#1A3A41';
-  ctx.fillRect(0,0,cw,CH);
+  // Staff line — full width
+  const nsx1 = notesStartX[1];
+  const closeX1 = nsx1 + B * BEAT_W + BAR_MARGIN;
+  const staffEnd = closeX1 + blMaxW;
+  ctx.strokeStyle = '#FFFAEF'; ctx.lineWidth = 1.8;
+  ctx.beginPath(); ctx.moveTo(0, SY); ctx.lineTo(staffEnd, SY); ctx.stroke();
 
-  ctx.strokeStyle='#FFFAEF'; ctx.lineWidth=1.8;
-  ctx.beginPath(); ctx.moveTo(0,SY); ctx.lineTo(closeX+blMaxW,SY); ctx.stroke();
-
-  // Helper: draw an SVG image tinted to a given colour
-  const dpr=window.devicePixelRatio||1;
+  // drawTinted helper
   function drawTinted(img, dx, dy, dw, dh, tint){
-    const offC=document.createElement('canvas');
-    offC.width=Math.ceil(dw*dpr);offC.height=Math.ceil(dh*dpr);
-    const offCtx=offC.getContext('2d');
-    offCtx.scale(dpr,dpr);
-    offCtx.drawImage(img,0,0,dw,dh);
-    offCtx.globalCompositeOperation='source-in';
-    offCtx.fillStyle=tint||'#FFFAEF';
-    offCtx.fillRect(0,0,dw,dh);
-    ctx.drawImage(offC,dx,dy,dw,dh);
+    const offC = document.createElement('canvas');
+    offC.width = Math.ceil(dw*dpr); offC.height = Math.ceil(dh*dpr);
+    const offCtx = offC.getContext('2d');
+    offCtx.scale(dpr, dpr);
+    offCtx.drawImage(img, 0, 0, dw, dh);
+    offCtx.globalCompositeOperation = 'source-in';
+    offCtx.fillStyle = tint || '#FFFAEF';
+    offCtx.fillRect(0, 0, dw, dh);
+    ctx.drawImage(offC, dx, dy, dw, dh);
   }
 
-  // Left decoration
-  // Every row starts with the drum clef. Row 0 also shows the time signature.
-  // No barline at the start of any row.
-  const ci=IMG['drum_clef'];
-  if(ci&&ci.complete&&ci.naturalWidth>0)
-    drawTinted(ci,4,SY-CLEF_H*0.50,CLEF_W,CLEF_H);
-  if(isFirst){
-    // Time signature (row 0 only, no barline between clef and time sig)
-    const[tsT,tsB]=S.timeSig.split('/');
-    ctx.fillStyle='#FFFAEF';
-    ctx.font=`bold ${TSIG_FONT}px "Helvetica Neue","Arial",sans-serif`;
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    const tsX=CLEF_W+12+TSIG_W/2;
-    const tsOff=TSIG_FONT*0.35+6; // digit edge sits ~6px from staff line each side
-    ctx.fillText(tsT,tsX,SY-tsOff-1);
-    ctx.fillText(tsB,tsX,SY+tsOff-1);
-  }
+  // Clef (bar 0 only)
+  const ci = IMG['drum_clef'];
+  if(ci && ci.complete && ci.naturalWidth > 0)
+    drawTinted(ci, 4, SY - CLEF_H * 0.50, CLEF_W, CLEF_H);
 
-  // Bar highlight
-  if(PS.highlightBar===b&&PS.playing&&barHighlightEnabled){
-    ctx.fillStyle='rgba(255,250,239,0.07)';
-    ctx.fillRect(0,4,closeX+blMaxW,CH-8);
-  }
+  // Time signature (bar 0 only)
+  const [tsT, tsB] = S.timeSig.split('/');
+  ctx.fillStyle = '#FFFAEF';
+  ctx.font = `bold ${TSIG_FONT}px "Helvetica Neue","Arial",sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const tsX = CLEF_W + 12 + TSIG_W / 2;
+  const tsOff = TSIG_FONT * 0.35 + 6;
+  ctx.fillText(tsT, tsX, SY - tsOff - 1);
+  ctx.fillText(tsB, tsX, SY + tsOff - 1);
 
-  // Compute beat positions for each note in this bar
-  let beatPos=0;
-  let gIdxBase=0;
-  for(let bb=0;bb<b;bb++) gIdxBase+=currentRhythm[bb].length;
+  // Draw each bar's notes
+  for(let b = 0; b < currentRhythm.length; b++){
+    const bar = currentRhythm[b] || [];
+    const nsx = notesStartX[b];
+    const closeX = nsx + B * BEAT_W + BAR_MARGIN;
 
-  for(let n=0;n<bar.length;n++){
-    const noteId=bar[n];
-    const def=NOTE_DEFS[noteId];
-    const gIdx=gIdxBase+n;
-    const hl=PS.highlightGroup===gIdx&&PS.playing&&noteHighlightEnabled;
-
-    // X position: left edge of this note's beat slot
-    const x=nsx+beatPos*BEAT_W;
-
-    // Draw the note image
-    // All notes use natural aspect-ratio width, left-aligned in their beat slot.
-    // Multi-beat notes (minim, semibreve) leave subsequent beat slots empty.
-    // Multi-beat RESTS (sa-ah, sa-ah-ah-ah) are centred within their beat span.
-    const MULTI_BEAT_RESTS = new Set(['sa-ah','sa-ah-ah-ah']);
-    const img=IMG[def.svgKey];
-    if(img&&img.complete&&img.naturalWidth>0){
-      const dh=getDisplayH(def.svgKey);
-      const dw = dh*(img.naturalWidth/img.naturalHeight);
-      const anchor=getAnchorY(def.svgKey);
-      const dy=SY-anchor*dh;
-      // Centre multi-beat rests within their full beat span; left-align everything else
-      const nx = MULTI_BEAT_RESTS.has(def.svgKey)
-        ? x + (def.beatDur*BEAT_W - dw) / 2
-        : x;
-      // Always tint: orange for highlighted, cream otherwise
-      drawTinted(img, nx, dy, dw, dh, hl ? '#E9794D' : '#FFFAEF');
+    // Bar highlight
+    if(PS.highlightBar === b && PS.playing && barHighlightEnabled){
+      ctx.fillStyle = 'rgba(255,250,239,0.07)';
+      ctx.fillRect(nsx - BAR_MARGIN, 4, B * BEAT_W + BAR_MARGIN * 2 + blMaxW, CH - 8);
     }
 
-    beatPos+=def.beatDur;
-  }
+    // Notes
+    let beatPos = 0;
+    let gIdxBase = 0;
+    for(let bb = 0; bb < b; bb++) gIdxBase += currentRhythm[bb].length;
 
-  // Closing barline
-  if(b===S.bars-1){
-    if(S.repeats>0) drawRepeatBL(ctx,closeX,SY);
-    else drawDoubleBL(ctx,closeX,SY);
-  } else {
-    drawSingleBL(ctx,closeX,SY);
+    const MULTI_BEAT_RESTS = new Set(['sa-ah', 'sa-ah-ah-ah']);
+    for(let n = 0; n < bar.length; n++){
+      const noteId = bar[n];
+      const def = NOTE_DEFS[noteId];
+      const gIdx = gIdxBase + n;
+      const hl = PS.highlightGroup === gIdx && PS.playing && noteHighlightEnabled;
+      const x = nsx + beatPos * BEAT_W;
+      const img = IMG[def.svgKey];
+      if(img && img.complete && img.naturalWidth > 0){
+        const dh = getDisplayH(def.svgKey);
+        let dw = dh * (img.naturalWidth / img.naturalHeight);
+        // Half-beat notes share a beat slot with their pair — cap width to half a slot
+        if(def.beatDur === 0.5) dw = Math.min(dw, BEAT_W / 2 - 2);
+        const anchor = getAnchorY(def.svgKey);
+        const dy = SY - anchor * dh;
+        const nx = MULTI_BEAT_RESTS.has(def.svgKey)
+          ? x + (def.beatDur * BEAT_W - dw) / 2
+          : x;
+        drawTinted(img, nx, dy, dw, dh, hl ? '#E9794D' : '#FFFAEF');
+      }
+      beatPos += def.beatDur;
+    }
+
+    // Barlines
+    if(b === S.bars - 1){
+      // Final barline
+      if(S.repeats > 0) drawRepeatBL(ctx, closeX, SY);
+      else drawDoubleBL(ctx, closeX, SY);
+    } else {
+      // Mid barline between bars
+      drawSingleBL(ctx, closeX, SY);
+    }
   }
 }
 
 function redrawBar(b){
-  if(barCanvases[b]){
-    const dpr=window.devicePixelRatio||1;
-    drawBar(barCanvases[b],b,barCanvases[b].width/dpr);
+  if(barCanvases[0]){
+    const dpr = window.devicePixelRatio || 1;
+    drawAllBarsOnCanvas(barCanvases[0], barCanvases[0].width / dpr);
+    drawDots(prevDots, 0.5, 14);
+    drawDots(lastDots, 1.0, 0);
   }
 }
 
-function sizeNewRhythmBtn(){
-  const btn = document.querySelector('.new-rhythm-btn');
-  const overlay = document.getElementById('welcomeOverlay');
-  if(!barCanvases[0]) return;
-  const B = bpb();
-  const nsx = notesStartX[0] ?? PREFIX_W;
-  const closeX = nsx + B * BEAT_W + BAR_MARGIN;
-  const blMaxW = blWidth(BL_REPEAT_W);
-  const staveEndCanvas = closeX + blMaxW; // logical-pixel right edge of barline
-  const dpr=window.devicePixelRatio||1;
-  const scale = barCanvases[0].getBoundingClientRect().width / (barCanvases[0].width/dpr);
-  const maxW = (staveEndCanvas * scale) + 'px';
-  if(btn) btn.style.maxWidth = maxW;
-  if(overlay) overlay.style.maxWidth = maxW;
-}
+function sizeNewRhythmBtn(){/* no-op: new rhythm triggered by stave tap */}
 
 // All three barline SVGs share viewBox height 1772 — scale uniformly by BL_H, derive width from aspect ratio
 // The repeat sign (vbW=428) is the widest; all barlines are RIGHT-aligned to x so they share the same right edge.
@@ -1088,7 +1212,7 @@ function drawDoubleBL(ctx, x, sy){ drawBarlineSVG(ctx, 'double_bar_line', 218, x
 function drawRepeatBL(ctx, x, sy){ drawBarlineSVG(ctx, 'repeat_sign',     428, x, sy); }
 
 // ── PLAYBACK ─────────────────────────────────────────────────
-const PS={playing:false,paused:false,highlightGroup:-1,highlightBar:-1,currentRepeat:0,totalRepeats:0,ids:[],audioCtx:null};
+const PS={playing:false,paused:false,highlightGroup:-1,highlightBar:-1,currentRepeat:0,totalRepeats:0,ids:[],audioCtx:null,_inCountIn:false};
 let _stickSide=0;
 const audioNodes=[];
 function stopAllAudio(){audioNodes.forEach(n=>{try{n.stop();}catch(e){}});audioNodes.length=0;}
@@ -1123,38 +1247,71 @@ function totalPlays(){if(S.assistMode!=='duet')return 2;if(S.repeats===99)return
 function handlePlayStop(){if(PS.playing||PS.paused){handleStop();}else{handlePlay();}}
 function handlePlay(){if(PS.playing)return;PS.currentRepeat=0;PS.totalRepeats=totalPlays();startCountIn(()=>playRepeat(0));}
 function handlePause(){if(!PS.playing)return;PS.playing=false;PS.paused=true;clearAll();setBear('ready');document.getElementById('statusText').textContent='Paused';}
-function handleStop(){PS.playing=false;PS.paused=false;clearAll();PS.highlightGroup=-1;PS.highlightBar=-1;setBear('ready');setActiveBeat(0);document.getElementById('statusText').textContent='Press Play to begin';document.getElementById('repeatInfo').textContent='';document.getElementById('repeatCounter').style.display='none';document.getElementById('countinDisplay').textContent='';drawAllBars();}
+function handleStop(){
+  PS.playing=false;PS.paused=false;PS._inCountIn=false;
+  clearAll();PS.highlightGroup=-1;PS.highlightBar=-1;
+  tapLog=[];lastDots=null;prevDots=null;
+  setBear('ready');setBoxBear('ready');setActiveBeat(0);
+  document.getElementById('beatNums').classList.remove('active');
+  const ov=document.getElementById('countInOverlay');if(ov)ov.classList.remove('active');
+  document.getElementById('statusText').textContent='';
+  document.getElementById('repeatInfo').textContent='';
+  document.getElementById('countinDisplay').textContent='';
+  drawAllBars();
+}
 function resumePlay(){PS.paused=false;PS.playing=true;playRepeat(PS.currentRepeat);}
 function startCountIn(cb){
-  PS.playing=true;
+  PS.playing=true;PS._inCountIn=true;
+  _userStickSide=0;
   const ac=getAC(),bd=bdSec(),B=bpb(),total=B*S.countInBars,st=ac.currentTime+0.05;
   document.getElementById('statusText').textContent='Count in…';
+  // Clear count bar — it's for playback only
+  setActiveBeat(0);
+  // Show overlay
+  const overlay=document.getElementById('countInOverlay');
+  const numEl=document.getElementById('countInNum');
+  overlay.classList.add('active');
   for(let i=0;i<total;i++){
     const t=st+i*bd,bin=(i%B)+1,ms=(t-ac.currentTime)*1000;
     at(()=>{
       if(!PS.playing)return;
-      if(S.countInType!=='sound'){const el=document.getElementById('countinDisplay');el.textContent=bin;el.classList.remove('pulse');void el.offsetWidth;el.classList.add('pulse');}
       setBear(bin===B?'drummotion':'drumready');
-      setActiveBeat(bin);
+      setBoxBear(bin===B?'drummotion':'drumready');
+      // Pulse the overlay number
+      numEl.textContent=bin;
+      numEl.classList.remove('pulse');
+      void numEl.offsetWidth; // force reflow to restart animation
+      numEl.classList.add('pulse');
     },ms);
-    if(S.countInType!=='visual'){const ct=t;at(()=>{if(PS.playing)playClick(ac.currentTime+0.01,bin===1,S.metronomeVol);},(ct-ac.currentTime)*1000);}
+    const ct=t;
+    at(()=>{if(PS.playing)playClick(ac.currentTime+0.01,bin===1,S.metronomeVol);},(ct-ac.currentTime)*1000);
   }
-  at(()=>{document.getElementById('countinDisplay').textContent='';if(PS.playing){_stickSide=0;cb();}},(st+total*bd-ac.currentTime)*1000);
+  at(()=>{
+    PS._inCountIn=false;
+    overlay.classList.remove('active');
+    numEl.textContent='';
+    setActiveBeat(0);
+    document.getElementById('countinDisplay').textContent='';
+    if(PS.playing){_stickSide=0;cb();}
+  },(st+total*bd-ac.currentTime)*1000);
 }
 function playRepeat(ri,st){
   if(!PS.playing)return;
   PS.currentRepeat=ri;
   _stickSide=0;
+  _userStickSide=0;
   setBear('drummotion');
+  setBoxBear('drummotion');
+  document.getElementById('beatNums').classList.add('active');
   const plays=PS.totalRepeats,lbl=plays===Infinity?'∞':`${ri+1} / ${plays}`;
   document.getElementById('repeatInfo').textContent=`Play ${lbl}`;
-  if(plays>1||plays===Infinity){const rc=document.getElementById('repeatCounter');rc.textContent=plays===Infinity?`Round ${ri+1}`:`Round ${ri+1} of ${plays}`;rc.style.display='inline';}
-  else{const rc=document.getElementById('repeatCounter');rc.textContent='Round 1 of 1';rc.style.display='inline';}
+  if(plays>1||plays===Infinity){const rc=document.getElementById('repeatCounter');if(rc)rc.textContent=plays===Infinity?`Round ${ri+1}`:`Round ${ri+1} of ${plays}`;}
   document.getElementById('statusText').textContent=rText(ri);
   const ac=getAC(),bd=bdSec(),B=bpb(),totalBeats=S.bars*B;
   if(st===undefined) st=ac.currentTime+0.02;
+  recordRepeatStart(st);
   const endTime=st+totalBeats*bd;
-  for(let i=0;i<totalBeats;i++){const isAcc=i%B===0,beatNum=(i%B)+1,ms=(st+i*bd-ac.currentTime)*1000;at(()=>{if(PS.playing&&S.metronomeOn)playClick(ac.currentTime+0.01,isAcc,S.metronomeVol);if(PS.playing)setActiveBeat(beatNum);},ms);}
+  for(let i=0;i<totalBeats;i++){const isAcc=i%B===0,globalBeat=i+1,ms=(st+i*bd-ac.currentTime)*1000;at(()=>{if(PS.playing&&(S.metronome==='both'||S.metronome==='sound'))playClick(ac.currentTime+0.01,isAcc,S.metronomeVol);if(PS.playing)setActiveBeat(globalBeat);},ms);}
   rhythmTimeline.forEach(ev=>{
     const ms=(st+ev.beatOffset*bd-ac.currentTime)*1000;
     at(()=>{
@@ -1179,128 +1336,149 @@ function playRepeat(ri,st){
     if(!PS.playing)return;
     const prevBar=PS.highlightBar;PS.highlightGroup=-1;PS.highlightBar=-1;
     if(prevBar>=0)redrawBar(prevBar);
+    // Score this repeat's taps and draw dots
+    lastDots=scoreTaps();
+    drawDots(prevDots, 0.5, 14);
+    drawDots(lastDots, 1.0, 0);
     const next=ri+1;
     if(plays!==Infinity&&next>=plays){
-      PS.playing=false;PS.paused=false;setBear('ready');setActiveBeat(0);
-      document.getElementById('statusText').textContent='Well done!';
-      document.getElementById('repeatInfo').textContent='';document.getElementById('repeatCounter').style.display='none';document.getElementById('countinDisplay').textContent='';
+      PS.playing=false;PS.paused=false;setBear('ready');setBoxBear('ready');setActiveBeat(0);
+      document.getElementById('statusText').textContent='';
+      document.getElementById('repeatInfo').textContent='';document.getElementById('countinDisplay').textContent='';
     } else {playRepeat(next,endTime);}
   },(endTime-ac.currentTime)*1000);
 }
 function rText(ri){if(S.assistMode==='listen')return ri===0?'Listen first…':'Your turn!';if(S.assistMode==='play')return ri===0?'Play the rhythm…':'Now with drum…';return'Playing together…';}
+
+// ── BEAT DISPLAY (count bar) ─────────────────────────────────
 function buildBeatDisplay(){
-  const B=bpb(),el=document.getElementById('beatDisplay');
+  const B=bpb(), el=document.getElementById('beatNums');
   el.innerHTML='';
-  el.style.position='relative';
-  el.style.height='100%';
-  for(let i=1;i<=B;i++){
-    const pip=document.createElement('div');
-    pip.className='beat-pip';
-    pip.id='beatPip'+i;
-    const img=document.createElement('img');
-    img.id='beatPipImg'+i;
-    img.src=SVGS['count_'+i+'_passive'];
-    img.alt=i;
-    pip.appendChild(img);
-    el.appendChild(pip);
+  for(let bar=0; bar<S.bars; bar++){
+    for(let i=1; i<=B; i++){
+      const d=document.createElement('div');
+      d.className='beat-num passive';
+      d.id='beatNum'+(bar*B+i);
+      d.textContent=i;
+      el.appendChild(d);
+    }
   }
-  positionBeatPips();
+  positionBeatNums();
 }
 
-// Positions each pip left-aligned to its beat slot in bar 1.
-// The canvas is drawn at internal pixel width but CSS-scaled to fit its container.
-// We derive the scale from the canvas element's actual rendered size on screen.
-function positionBeatPips(){
+function positionBeatNums(){
+  // Position each beat number to align with its beat slot on the canvas.
+  // The canvas is centred inside #staveArea — we need its left offset
+  // relative to the page, then map beat slot x-coordinates into that space.
+  if(!barCanvases[0]) return;
   const B=bpb();
-  const bearCol=document.querySelector('.bear-col');
-  const beatBarEl=document.getElementById('beatBar');
-  if(!bearCol||!beatBarEl||!barCanvases[0]) return;
-
-  const nsx=notesStartX[0]??PREFIX_W;
-
-  // True rendered width of the first canvas element (CSS pixels)
+  const countBar=document.getElementById('countBar');
   const canvasRect=barCanvases[0].getBoundingClientRect();
-  const barRect=beatBarEl.getBoundingClientRect();
-
-  // Scale: how many CSS pixels per logical canvas pixel
+  const barRect=countBar.getBoundingClientRect();
   const dpr=window.devicePixelRatio||1;
-  const scale = canvasRect.width / (barCanvases[0].width/dpr);
+  // CSS pixels per logical canvas pixel
+  const scale=canvasRect.width/(barCanvases[0].width/dpr);
+  // Left edge of canvas relative to countBar left
+  const originX=canvasRect.left - barRect.left;
 
-  // X origin: where the canvas left edge sits relative to the beat-bar left edge
-  const originX = canvasRect.left - barRect.left;
-
-  for(let i=1;i<=B;i++){
-    const pip=document.getElementById('beatPip'+i);
-    if(!pip) continue;
-    const slotX = originX + (nsx + (i-1)*BEAT_W) * scale;
-    pip.style.left = slotX + 'px';
+  for(let bar=0; bar<S.bars; bar++){
+    for(let i=1; i<=B; i++){
+      const el=document.getElementById('beatNum'+(bar*B+i));
+      if(!el) continue;
+      // notesStartX[bar] gives logical x of beat 0 of that bar
+      // beat i-1 within that bar is at notesStartX[bar] + (i-1)*BEAT_W
+      const logicalX = notesStartX[bar] + (i-1)*BEAT_W;
+      const cssX = originX + logicalX * scale;
+      el.style.left = cssX + 'px';
+    }
   }
 }
+
 function setActiveBeat(n){
-  // n = 1-based beat number, or 0 to clear all
   const B=bpb();
-  const bar=document.getElementById('beatBar');
-  if(n>0){
-    if(bar&&!bar.classList.contains('visible')){
-      positionBeatPips();
-      bar.classList.add('visible');
-    }
-  } else {
-    if(bar) bar.classList.remove('visible');
-  }
-  for(let i=1;i<=B;i++){
-    const pip=document.getElementById('beatPip'+i);
-    const img=document.getElementById('beatPipImg'+i);
-    if(!pip||!img)continue;
-    pip.classList.remove('active','accent');
-    if(i===n){
-      img.src=SVGS['count_'+i+'_active'];
-      pip.classList.add(i===1?'accent':'active');
+  const totalBeats=S.bars*B;
+  const showVisual=(PS._inCountIn)||(S.metronome==='both'||S.metronome==='visual');
+  for(let g=1; g<=totalBeats; g++){
+    const el=document.getElementById('beatNum'+g);
+    if(!el) continue;
+    el.classList.remove('active','accent','passive');
+    if(n===0||!showVisual){
+      el.classList.add('passive');
+    } else if(g===n){
+      const beatWithinBar=((g-1)%B)+1;
+      el.classList.add(beatWithinBar===1?'accent':'active');
     } else {
-      img.src=SVGS['count_'+i+'_passive'];
+      el.classList.add('passive');
     }
   }
 }
+
 function setBear(name){
   ['bearJustBear','bearDrumReady','bearDrumMotion','bearLeftStick','bearRightStick'].forEach(id=>document.getElementById(id).classList.remove('active'));
-  const m={
-    ready:'bearJustBear',
-    justbear:'bearJustBear',
-    drumready:'bearDrumReady',
-    drummotion:'bearDrumMotion',
-    leftstick:'bearLeftStick',
-    rightstick:'bearRightStick'
-  };
-  const lb={ready:'',justbear:'',drumready:'Ready…',drummotion:'Playing!',leftstick:'Left!',rightstick:'Right!'};
+  const m={ready:'bearJustBear',justbear:'bearJustBear',drumready:'bearDrumReady',drummotion:'bearDrumMotion',leftstick:'bearLeftStick',rightstick:'bearRightStick'};
   (document.getElementById(m[name]||'bearJustBear')).classList.add('active');
-  document.getElementById('bearLabel').textContent=lb[name]||'';
 }
 
-function toggleBarHighlightPill(){barHighlightEnabled=!barHighlightEnabled;document.getElementById('toggleBarHighlight').classList.toggle('active',barHighlightEnabled);drawAllBars();}
-function toggleNoteHighlightPill(){noteHighlightEnabled=!noteHighlightEnabled;document.getElementById('toggleNoteHighlight').classList.toggle('active',noteHighlightEnabled);drawAllBars();}
-function toggleDrumPill(){drumEnabled=!drumEnabled;document.getElementById('toggleDrum').classList.toggle('active',drumEnabled);}
-function toggleMetronomePill(){S.metronomeOn=!S.metronomeOn;document.getElementById('toggleMetronome').classList.toggle('active',S.metronomeOn);document.getElementById('valMetronome').textContent=S.metronomeOn?'On':'Off';document.querySelectorAll('#metronomeGroup .radio-chip').forEach(el=>el.classList.toggle('selected',el.dataset.val===(S.metronomeOn?'on':'off')));}
-function openHelp(){document.getElementById('helpModal').classList.add('open');document.body.style.overflow='hidden';}
-function closeHelp(){document.getElementById('helpModal').classList.remove('open');document.body.style.overflow='';}
-function handleHelpBackdrop(e){if(e.target===document.getElementById('helpModal'))closeHelp();}
-function openSettings(){document.getElementById('settingsModal').classList.add('open');document.body.style.overflow='hidden';}
-function closeSettings(){document.getElementById('settingsModal').classList.remove('open');document.body.style.overflow='';}
+function setBoxBear(name){
+  ['boxBearJustBear','boxBearDrumReady','boxBearDrumMotion','boxBearLeftStick','boxBearRightStick'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  const m={ready:'boxBearJustBear',justbear:'boxBearJustBear',drumready:'boxBearDrumReady',drummotion:'boxBearDrumMotion',leftstick:'boxBearLeftStick',rightstick:'boxBearRightStick'};
+  (document.getElementById(m[name]||'boxBearJustBear')).classList.add('active');
+}
+
+// ── LAYOUT SIZING ────────────────────────────────────────────
+function layoutSizes(){
+  // Size the stave area and bear zone based on available space
+  const app=document.getElementById('app');
+  const countBar=document.getElementById('countBar');
+  const feedbackStrip=document.getElementById('feedbackStrip');
+  const staveArea=document.getElementById('staveArea');
+  const bearZone=document.getElementById('bearZone');
+  const bearsCenter=document.getElementById('bearsCenter');
+
+  const totalH=app.clientHeight;
+  const countH=countBar.offsetHeight;
+  const feedH=feedbackStrip.offsetHeight;
+
+  // Stave area: single row canvas (both bars side by side)
+  const stavesNeeded = CH + 16;
+  staveArea.style.height = stavesNeeded + 'px';
+
+  // Bear zone: fill remaining
+  const bearH=Math.max(60, totalH - countH - stavesNeeded - feedH);
+  bearZone.style.height=bearH+'px';
+
+  // Size bear stages — subtract bottom padding (28px) from usable height
+  const bearPad = 28;
+  const bearSize=Math.min((bearH - bearPad)*0.95, (app.clientWidth*0.35));
+  document.querySelectorAll('.bear-stage').forEach(el=>{
+    el.style.width=bearSize+'px';
+    el.style.height=bearSize+'px';
+  });
+}
+
+function openSettings(){document.getElementById('settingsModal').classList.add('open');}
+function closeSettings(){document.getElementById('settingsModal').classList.remove('open');}
 function handleBackdropClick(e){if(e.target===document.getElementById('settingsModal'))closeSettings();}
 function toggleAcc(h){h.classList.toggle('open');h.nextElementSibling.classList.toggle('open');}
 function chips(gid,val){document.querySelectorAll(`#${gid} .radio-chip`).forEach(el=>el.classList.toggle('selected',el.dataset.val==val));}
-function setSetting(k,v){S[k]=v;if(k==='bars'){document.getElementById('valBars').textContent=`${v} bar${v>1?'s':''}`;chips('barsGroup',v);generateNewRhythm();}}
-function updateTempo(v){v=Math.max(40,Math.min(180,parseInt(v)||80));S.tempo=v;document.getElementById('tempoSlider').value=v;document.getElementById('tempoNum').value=v;document.getElementById('tempoTransport').value=v;document.getElementById('tempoTransportVal').textContent=`${v} bpm`;document.getElementById('valTempo').textContent=`${v} bpm`;}
-// Time signatures allowed per level. Levels not listed allow all four.
+
+function updateTempo(v){
+  v=Math.max(40,Math.min(180,parseInt(v)||80));
+  S.tempo=v;
+  document.getElementById('tempoSlider').value=v;
+  document.getElementById('tempoNum').value=v;
+  document.getElementById('valTempo').textContent=`${v} bpm`;
+}
+
+// Time signatures allowed per level
 const LEVEL_TIME_SIGS={1:['4/4','2/4']};
 function enforceTimeSigForLevel(){
   const allowed=LEVEL_TIME_SIGS[S.level]||['4/4','2/4','3/4','5/4'];
-  // Grey out / disable chips that are not allowed at this level
   document.querySelectorAll('#timeSigGroup .radio-chip').forEach(el=>{
     const ok=allowed.includes(el.dataset.val);
     el.style.opacity=ok?'':'0.35';
     el.style.pointerEvents=ok?'':'none';
   });
-  // If current time sig is not allowed, switch to first allowed option
   if(!allowed.includes(S.timeSig)){
     S.timeSig=allowed[0];
     chips('timeSigGroup',S.timeSig);
@@ -1308,46 +1486,323 @@ function enforceTimeSigForLevel(){
     buildBeatDisplay();
   }
 }
+
 function setTimeSig(v){S.timeSig=v;chips('timeSigGroup',v);document.getElementById('valTimeSig').textContent=v;buildBeatDisplay();generateNewRhythm();}
-function setCountInBars(v){S.countInBars=v;chips('countInBarsGroup',v);updateCILabel();}
-function setCountInType(v){S.countInType=v;chips('countInTypeGroup',v);updateCILabel();}
-function updateCILabel(){document.getElementById('valCountIn').textContent=`${S.countInBars} bar · ${{visual:'Visual',sound:'Sound',both:'Visual+Sound'}[S.countInType]}`;}
-function setMetronome(v){S.metronomeOn=v==='on';chips('metronomeGroup',v);document.getElementById('valMetronome').textContent=v==='on'?'On':'Off';document.getElementById('toggleMetronome').classList.toggle('active',S.metronomeOn);}
+function setCountInBars(v){S.countInBars=v;chips('countInBarsGroup',v);document.getElementById('valCountIn').textContent=`${v} bar${v>1?'s':''}`;}
+
+// Metronome: 'both' | 'visual' | 'sound' | 'none'
+function setMetronome(v){
+  S.metronome=v;
+  chips('metronomeGroup',v);
+  const labels={both:'Visual + Sound',visual:'Visual only',sound:'Sound only',none:'None'};
+  document.getElementById('valMetronome').textContent=labels[v]||v;
+}
 function updateMetronomeVol(v){S.metronomeVol=v/100;document.getElementById('metronomeVolVal').textContent=`${v}%`;}
-function setRepeats(v){S.repeats=parseInt(v);chips('repeatsGroup',v);document.getElementById('valRepeats').textContent={0:'No repeat',1:'×2 total',3:'×4 total',7:'×8 total',99:'∞'}[v]||`×${parseInt(v)+1}`;redrawBar(S.bars-1);}
+function setRepeats(v){S.repeats=parseInt(v);chips('repeatsGroup',v);document.getElementById('valRepeats').textContent={0:'No repeat',1:'\u00d72 total',3:'\u00d74 total',7:'\u00d78 total',99:'\u221e'}[v]||`\u00d7${parseInt(v)+1}`;redrawBar(S.bars-1);}
 function updateAssistVol(v){S.assistVol=v/100;document.getElementById('assistVolVal').textContent=`${v}%`;document.getElementById('valAssistVol').textContent=`${v}%`;}
-function setAssistMode(v){S.assistMode=v;chips('assistModeGroup',v);document.getElementById('valAssistMode').textContent={duet:'Duet',listen:'Listen First',play:'Play First'}[v];const special=v!=='duet';const n=document.getElementById('assistModeNote'),rn=document.getElementById('repeatsNote');n.style.display=special?'block':'none';rn.style.display=special?'block':'none';if(v==='listen')n.textContent='Plays twice: with drum first, then rhythm only.';else if(v==='play')n.textContent='Plays twice: rhythm only first, then with drum.';document.querySelectorAll('#repeatsGroup .radio-chip').forEach(el=>{el.style.opacity=special?'0.4':'1';el.style.pointerEvents=special?'none':'';});}
-function buildLevels(){const c=document.getElementById('levelChips');LEVELS.forEach(l=>{const el=document.createElement('div');el.className='level-chip'+(l.num===S.level?' active':'');el.textContent=l.label;el.onclick=()=>setLevel(l.num);c.appendChild(el);});}
-function setLevel(n){S.level=n;document.querySelectorAll('.level-chip').forEach((el,i)=>el.classList.toggle('active',LEVELS[i].num===n));enforceTimeSigForLevel();generateNewRhythm();}
-function dismissWelcome(){
-  const ov=document.getElementById('welcomeOverlay');
-  if(!ov)return;
-  ov.classList.add('hiding');
-  setTimeout(()=>ov.style.display='none',300);
+
+function updateAssistanceLabel(){
+  const b=noteHighlightEnabled,r=barHighlightEnabled;
+  const lbl=b&&r?'Beat & Bar on':!b&&!r?'Both off':b?'Beat on, Bar off':'Bar on, Beat off';
+  document.getElementById('valAssistance').textContent=lbl;
 }
-function setWelcome(v){
-  S.showWelcome=v==='on';
-  chips('welcomeGroup',v);
-  document.getElementById('valWelcome').textContent=v==='on'?'On':'Off';
+function setBeatHighlight(v){
+  noteHighlightEnabled=(v==='on');
+  chips('beatHighlightGroup',v);
+  updateAssistanceLabel();
+  drawAllBars();
 }
-function showWelcomeOverlay(){
-  const ov=document.getElementById('welcomeOverlay');
-  if(!ov)return;
-  if(S.showWelcome){
-    ov.style.display='flex';
-    ov.classList.remove('hiding');
-  } else {
-    ov.style.display='none';
+function setBarHighlight(v){
+  barHighlightEnabled=(v==='on');
+  chips('barHighlightGroup',v);
+  updateAssistanceLabel();
+  drawAllBars();
+}
+
+// ── LATENCY CALIBRATION ──────────────────────────────────────
+let _calRunning=false, _calIds=[], _calBeat=0;
+const CAL_BPM=72, CAL_BEATS=4;
+
+function updateLatency(v){
+  v=parseInt(v);
+  S.latencyOffset=v;
+  document.getElementById('latencyVal').textContent=`${v} ms`;
+  document.getElementById('valLatency').textContent=`${v} ms`;
+  document.getElementById('latencySlider').value=v;
+}
+
+function toggleCalibration(){
+  if(_calRunning) stopCalibration(); else startCalibration();
+}
+
+function startCalibration(){
+  _calRunning=true;
+  document.getElementById('calBtn').textContent='Stop';
+  document.getElementById('calBtn').classList.add('running');
+  _calBeat=0;
+  scheduleCalBeat();
+}
+
+function stopCalibration(){
+  _calRunning=false;
+  _calIds.forEach(clearTimeout); _calIds=[];
+  document.getElementById('calBtn').textContent='Start';
+  document.getElementById('calBtn').classList.remove('running');
+  // Clear all lights
+  for(let i=0;i<CAL_BEATS;i++) document.getElementById('calLight'+i).classList.remove('flash');
+}
+
+function scheduleCalBeat(){
+  if(!_calRunning) return;
+  const intervalMs = 60000/CAL_BPM;
+  const lightIdx = _calBeat % CAL_BEATS;
+
+  // Flash the light immediately (visual — no offset)
+  const lightEl = document.getElementById('calLight'+lightIdx);
+  lightEl.classList.add('flash');
+  const offId = setTimeout(()=>lightEl.classList.remove('flash'), 80);
+  _calIds.push(offId);
+
+  // Play click sound. Positive latencyOffset means speaker is slow by that many ms,
+  // so we schedule the sound that many ms EARLIER than the light flash.
+  const ac = getAC();
+  const advanceSec = Math.max(0, S.latencyOffset) / 1000;
+  playClick(ac.currentTime + advanceSec + 0.005, lightIdx===0, 0.7);
+
+  _calBeat++;
+  const nextId = setTimeout(scheduleCalBeat, intervalMs);
+  _calIds.push(nextId);
+}
+
+// Stop calibration when settings modal closes
+const _origCloseSettings = closeSettings;
+closeSettings = function(){
+  stopCalibration();
+  _origCloseSettings();
+};
+
+function buildLevels(){
+  const c=document.getElementById('levelChips');
+  LEVELS.forEach(l=>{
+    const el=document.createElement('div');
+    el.className='level-chip'+(l.num===S.level?' active':'');
+    el.textContent=l.label;
+    el.onclick=()=>setLevel(l.num);
+    c.appendChild(el);
+  });
+}
+function setLevel(n){
+  S.level=n;
+  document.querySelectorAll('.level-chip').forEach((el,i)=>el.classList.toggle('active',LEVELS[i].num===n));
+  document.getElementById('valLevel').textContent='Level '+n;
+  enforceTimeSigForLevel();
+  generateNewRhythm();
+}
+
+// ── STAVE AREA TAP → NEW RHYTHM ──────────────────────────────
+function handleStaveTap(){
+  if(PS.playing||PS.paused) return; // ignored during playback
+  generateNewRhythm();
+}
+
+// ── USER TAP RECORDING & DOT FEEDBACK ───────────────────────
+// tapLog: array of performance.now() timestamps for the current repeat
+// repeatStartTime: performance.now() when the current repeat began
+// lastDots: scored dot data from the last completed repeat, drawn after finish
+let tapLog=[], repeatStartPerfTime=0, lastDots=null, prevDots=null;
+
+function recordRepeatStart(acStartSec){
+  tapLog=[];
+  const ac=getAC();
+  repeatStartPerfTime = performance.now() - (acStartSec - ac.currentTime)*1000;
+  // Fade current dots to half immediately — new round is starting
+  prevDots=lastDots;
+  lastDots=null;
+  redrawBar(0);
+}
+
+// Timing windows (ms)
+const DOT_PERFECT=150, DOT_MARGINAL=300, DOT_WINDOW=500;
+
+function scoreTaps(){
+  // Build list of expected hits (non-rest only, isGroupFirst only — one dot per notehead position)
+  // For groups (ti-ti etc.) every sub-hit has its own entry in rhythmTimeline, so we get a dot per sub-hit.
+  const bd=bdSec()*1000; // ms per beat
+  const B=bpb();
+
+  // All non-rest timeline events become expected hits
+  const expected = rhythmTimeline
+    .filter(ev=>!ev.isRest)
+    .map(ev=>{
+      const barLocalBeat = ev.beatOffset - ev.barIdx * B;
+      const x = notesStartX[ev.barIdx] + barLocalBeat * BEAT_W;
+      return { tMs: ev.beatOffset * bd, x, barIdx: ev.barIdx, matched: false };
+    });
+
+  // Rest events — taps near these are "wrong note" crosses
+  const rests = rhythmTimeline
+    .filter(ev=>ev.isRest&&ev.isGroupFirst)
+    .map(ev=>{
+      const barLocalBeat = ev.beatOffset - ev.barIdx * B;
+      const x = notesStartX[ev.barIdx] + barLocalBeat * BEAT_W;
+      return { tMs: ev.beatOffset * bd, x, barIdx: ev.barIdx };
+    });
+
+  const dots=[];
+
+  // Match each tap to nearest unmatched expected hit within DOT_WINDOW
+  const tapTimes = tapLog.map(t => (t - repeatStartPerfTime) - S.latencyOffset);
+  const usedTaps = new Set();
+
+  for(let ei=0; ei<expected.length; ei++){
+    const exp=expected[ei];
+    let bestDelta=Infinity, bestTi=-1;
+    for(let ti=0; ti<tapTimes.length; ti++){
+      if(usedTaps.has(ti)) continue;
+      const delta=tapTimes[ti]-exp.tMs;
+      if(Math.abs(delta)<DOT_WINDOW && Math.abs(delta)<Math.abs(bestDelta)){
+        bestDelta=delta; bestTi=ti;
+      }
+    }
+    if(bestTi>=0){
+      usedTaps.add(bestTi);
+      expected[ei].matched=true;
+      const shift=Math.max(-BEAT_W/2, Math.min(BEAT_W/2, (bestDelta/bd)*BEAT_W));
+      if(Math.abs(bestDelta)<=DOT_PERFECT){
+        dots.push({type:'dot',  x:exp.x+shift, barIdx:exp.barIdx, colour:'#FFD770'});
+      } else if(Math.abs(bestDelta)<=DOT_MARGINAL){
+        dots.push({type:'ring', x:exp.x+shift, barIdx:exp.barIdx, colour:'#FFD770'});
+      }
+      // beyond DOT_MARGINAL: tap was so late/early it's effectively a miss — no dot
+    }
+    // No match: nothing played, nothing drawn
   }
+
+  // Unmatched taps — check if near a rest (cross) or truly extra (small dark dot)
+  for(let ti=0; ti<tapTimes.length; ti++){
+    if(usedTaps.has(ti)) continue;
+    const t=tapTimes[ti];
+    // Check if near a rest
+    let nearRest=null, bestD=Infinity;
+    for(const r of rests){
+      const d=Math.abs(t-r.tMs);
+      if(d<DOT_WINDOW && d<bestD){ bestD=d; nearRest=r; }
+    }
+    if(nearRest){
+      dots.push({type:'cross', x:nearRest.x, barIdx:nearRest.barIdx, colour:'#C94040'});
+    } else {
+      // Extra tap — place at its actual time position, find which bar
+      const beatPos=t/bd;
+      const barIdx=Math.min(S.bars-1, Math.floor(beatPos/B));
+      const barLocalBeat=beatPos - barIdx*B;
+      const x=notesStartX[barIdx] + barLocalBeat*BEAT_W;
+      dots.push({type:'extra', x, barIdx, colour:'rgba(255,250,239,0.35)'});
+    }
+  }
+
+  return dots;
 }
-window.addEventListener('load',()=>{buildLevels();buildBeatDisplay();enforceTimeSigForLevel();loadImages(()=>{generateNewRhythm();showWelcomeOverlay();});})
-window.addEventListener('resize',()=>{drawAllBars();positionBeatPips();sizeNewRhythmBtn();});
+
+function drawDots(dots, alpha, yOffset){
+  if(!dots||!dots.length) return;
+  if(!barCanvases[0]) return;
+  const canvas=barCanvases[0];
+  const dpr=window.devicePixelRatio||1;
+  const ctx=canvas.getContext('2d');
+  const DOT_Y = SY + 22 + (yOffset||0);
+  const DOT_R = 4.5;
+  const CROSS = 5;
+
+  ctx.save();
+  ctx.globalAlpha = alpha ?? 1.0;
+  for(const d of dots){
+    const cx=d.x;
+    ctx.fillStyle=d.colour;
+    ctx.strokeStyle=d.colour;
+    if(d.type==='dot'||d.type==='extra'){
+      const r=d.type==='extra'?3:DOT_R;
+      ctx.beginPath();
+      ctx.arc(cx, DOT_Y, r, 0, Math.PI*2);
+      ctx.fill();
+    } else if(d.type==='ring'){
+      ctx.lineWidth=1.8;
+      ctx.beginPath();
+      ctx.arc(cx, DOT_Y, DOT_R, 0, Math.PI*2);
+      ctx.stroke();
+    } else if(d.type==='cross'){
+      ctx.lineWidth=1.8;
+      ctx.beginPath();
+      ctx.moveTo(cx-CROSS, DOT_Y-CROSS); ctx.lineTo(cx+CROSS, DOT_Y+CROSS);
+      ctx.moveTo(cx+CROSS, DOT_Y-CROSS); ctx.lineTo(cx-CROSS, DOT_Y+CROSS);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+// ── USER INPUT (side pads + keyboard) ───────────────────────
+let _userStickSide=0;
+
+function playUserDrum(){
+  const ac=getAC(),t=ac.currentTime+0.01,v=S.assistVol;
+  // Slightly higher pitch than computer drum — distinguishable but similar
+  const o=trackNode(ac.createOscillator()),g=ac.createGain();
+  o.connect(g);g.connect(ac.destination);
+  o.frequency.setValueAtTime(240,t);o.frequency.exponentialRampToValueAtTime(60,t+0.08);
+  g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.18);
+  o.start(t);o.stop(t+0.2);
+  const buf=ac.createBuffer(1,ac.sampleRate*0.04,ac.sampleRate);
+  const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+  const s=trackNode(ac.createBufferSource()),ng=ac.createGain();
+  s.buffer=buf;s.connect(ng);ng.connect(ac.destination);
+  ng.gain.setValueAtTime(v*0.25,t);ng.gain.exponentialRampToValueAtTime(0.001,t+0.04);s.start(t);
+}
+
+function handleUserTap(e){
+  if(e) e.preventDefault();
+  if(!PS.playing||PS._inCountIn) return;
+  tapLog.push(performance.now());
+  // Animate box bear: alternate sticks, bounce back to drummotion after 100ms
+  const side=_userStickSide%2===0?'rightstick':'leftstick';
+  _userStickSide++;
+  setBoxBear(side);
+  playUserDrum();
+  setTimeout(()=>{ if(PS.playing) setBoxBear('drummotion'); },100);
+}
+
+function initInputHandlers(){
+  // Side pads — touch
+  ['leftPad','rightPad'].forEach(id=>{
+    const el=document.getElementById(id);
+    el.addEventListener('touchstart',e=>{e.preventDefault();handleUserTap(e);},{passive:false});
+    el.addEventListener('mousedown',e=>{handleUserTap(e);});
+  });
+  // Bear zone taps → play/stop (but NOT side pads, which are user input)
+  document.getElementById('bearsCenter').addEventListener('touchstart',e=>{e.preventDefault();handlePlayStop();},{passive:false});
+  document.getElementById('bearsCenter').addEventListener('mousedown',()=>handlePlayStop());
+  // Stave area → new rhythm
+  document.getElementById('staveArea').addEventListener('touchstart',e=>{e.preventDefault();handleStaveTap();},{passive:false});
+  document.getElementById('staveArea').addEventListener('mousedown',()=>handleStaveTap());
+  // Keyboard: any letter key → user tap; Space → play/stop; Enter → new rhythm
+  document.addEventListener('keydown',e=>{
+    if(e.repeat) return;
+    if(e.metaKey||e.ctrlKey||e.altKey) return;
+    if(e.key===' '){e.preventDefault();handlePlayStop();}
+    else if(e.key==='Enter'){e.preventDefault();handleStaveTap();}
+    else if(e.key.length===1&&/^[a-zA-Z]$/.test(e.key)) handleUserTap(e);
+  });
+}
+
+window.addEventListener('load',()=>{
+  buildLevels();
+  buildBeatDisplay();
+  enforceTimeSigForLevel();
+  layoutSizes();
+  initInputHandlers();
+  loadImages(()=>{generateNewRhythm();positionBeatNums();});
+});
+window.addEventListener('resize',()=>{layoutSizes();drawAllBars();positionBeatNums();});
+
 </script>
-  <!-- Portrait mode overlay -->
-  <div class="portrait-overlay">
-    <div class="po-icon">📱</div>
-    <div class="po-title">Rotate your device</div>
-    <div class="po-sub">This app works best in landscape mode.<br>Turn your phone sideways to get started!</div>
-  </div>
 </body>
 </html>

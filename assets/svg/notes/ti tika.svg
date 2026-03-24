@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg width="100%" height="100%" viewBox="0 0 1220 1000" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
-    <g transform="matrix(1,0,0,1,-500.776,-500.676)">
-        <g id="Tika-ti" transform="matrix(0.35666,0,0,0.35666,472.243,72.6841)">
+<svg width="100%" height="100%" viewBox="0 0 1664 1000" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+    <g transform="matrix(1,0,0,1,-500,-500.676)">
+        <g id="Titika" transform="matrix(0.35666,0,0,0.35666,471.467,72.6841)">
             <g transform="matrix(1,0,0,1,-719.899,3.63798e-12)">
                 <path d="M1626.2,3308.51L1626.2,1200L1706.2,1200L1706.2,3520L1706.17,3520C1704.21,3668.22 1605.17,3827.49 1439.19,3923.32C1211.2,4054.95 942.694,4017.35 839.959,3839.41C737.224,3661.46 838.917,3410.13 1066.91,3278.5C1269.66,3161.44 1504.46,3178.22 1626.2,3308.51Z"/>
             </g>
-            <g transform="matrix(1,0,0,1,530.545,3.85936e-12)">
+            <g transform="matrix(1,0,0,1,1794.43,3.23408e-12)">
                 <path d="M1626.2,3308.51L1626.2,1200L1706.2,1200L1706.2,3520L1706.17,3520C1704.21,3668.22 1605.17,3827.49 1439.19,3923.32C1211.2,4054.95 942.694,4017.35 839.959,3839.41C737.224,3661.46 838.917,3410.13 1066.91,3278.5C1269.66,3161.44 1504.46,3178.22 1626.2,3308.51Z"/>
             </g>
-            <g transform="matrix(1,0,0,1,1792.25,3.23408e-12)">
+            <g transform="matrix(1,0,0,1,3037.18,3.23408e-12)">
                 <path d="M1626.2,3308.51L1626.2,1200L1706.2,1200L1706.2,3520L1706.17,3520C1704.21,3668.22 1605.17,3827.49 1439.19,3923.32C1211.2,4054.95 942.694,4017.35 839.959,3839.41C737.224,3661.46 838.917,3410.13 1066.91,3278.5C1269.66,3161.44 1504.46,3178.22 1626.2,3308.51Z"/>
             </g>
-            <g transform="matrix(-1.7834e-15,8,4.50421,-2.40366e-15,-11331.4,-11280)">
+            <g transform="matrix(-1.54682e-15,8,6.71111,-1.7785e-15,-17334.2,-11280)">
                 <rect x="1560" y="2720" width="40" height="560"/>
             </g>
-            <g transform="matrix(-9.03007e-16,4,2.1466,-1.23172e-15,-4860.16,-4448.65)">
+            <g transform="matrix(-8.92537e-16,4,2.24426,-1.20405e-15,-2652.48,-4448.98)">
                 <rect x="1560" y="2720" width="40" height="560"/>
             </g>
         </g>
