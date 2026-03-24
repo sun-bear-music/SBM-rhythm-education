@@ -413,10 +413,10 @@ HOW TO CONTINUE DEVELOPMENT
   #bearsCenter{
     flex-shrink:0;
     display:flex;flex-direction:row;
-    align-items:flex-end;
+    align-items:center;
     justify-content:center;
     gap:24px;
-    padding:0 12px 28px;
+    padding:0 12px;
     -webkit-tap-highlight-color:transparent;
     user-select:none;
   }
@@ -1450,9 +1450,8 @@ function layoutSizes(){
   const bearH=Math.max(60, totalH - countH - stavesNeeded - feedH);
   bearZone.style.height=bearH+'px';
 
-  // Size bear stages — subtract bottom padding (28px) from usable height
-  const bearPad = 28;
-  const bearSize=Math.min((bearH - bearPad)*0.95, (app.clientWidth*0.35));
+  // Size bear stages — bears are centred in the zone, no padding offset needed
+  const bearSize=Math.min(bearH*0.95, (app.clientWidth*0.35));
   document.querySelectorAll('.bear-stage').forEach(el=>{
     el.style.width=bearSize+'px';
     el.style.height=bearSize+'px';
