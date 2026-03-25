@@ -58,8 +58,8 @@ SVG ASSETS (all embedded as base64)
     computer_bear_just_bear   — default pose (shown when nothing is playing)
     computer_bear_drum_ready  — shown during all but the last count of the count-in
     computer_bear_drum_motion — shown on the last count of the count-in; also between hits during playback
-    computer_bear_left_stick  — left stick hitting drum (alternates during playback)
-    computer_bear_right_stick — right stick hitting drum (alternates during playback)
+    computer_bear_drum_left_stick  — left stick hitting drum (alternates during playback)
+    computer_bear_drum_right_stick — right stick hitting drum (alternates during playback)
     On finish: returns to computer_bear_just_bear (no yay animation)
 
 ─────────────────────────────────────────────────────────────────────────────
@@ -272,7 +272,7 @@ DUET MODE — PLANNED FEATURE (designed, not yet built)
     Format: {computer|user}_bear_{item}_{position}
     When no item: {computer|user}_bear_just_bear
     Items: drum, box, fish, shoe, saucepan, bongo, etc.
-    Example: user_bear_box_left_stick, user_bear_fish_right_stick
+    Example: user_bear_drum_left_stick, user_bear_fish_right_stick
     This allows the code to construct asset names dynamically.
     All new SVGs should share the same viewBox dimensions and staff-line
     anchor point as the existing bear assets.
@@ -694,13 +694,13 @@ const SVGS = {
   "computer_bear_drum_motion": "assets/svg/bear/computer_bear_drum_motion.svg",
   "computer_bear_drum_ready": "assets/svg/bear/computer_bear_drum_ready.svg",
   "computer_bear_just_bear": "assets/svg/bear/computer_bear_just_bear.svg",
-  "computer_bear_left_stick": "assets/svg/bear/computer_bear_left_stick.svg",
-  "computer_bear_right_stick": "assets/svg/bear/computer_bear_right_stick.svg",
-  "user_bear_box_just_bear": "assets/svg/bear/user_bear_box_just_bear.svg",
-  "user_bear_box_drum_ready": "assets/svg/bear/user_bear_box_drum_ready.svg",
-  "user_bear_box_drum_motion": "assets/svg/bear/user_bear_box_drum_motion.svg",
-  "user_bear_box_left_stick": "assets/svg/bear/user_bear_box_left_stick.svg",
-  "user_bear_box_right_stick": "assets/svg/bear/user_bear_box_right_stick.svg",
+  "computer_bear_drum_left_stick": "assets/svg/bear/computer_bear_drum_left_stick.svg",
+  "computer_bear_drum_right_stick": "assets/svg/bear/computer_bear_drum_right_stick.svg",
+  "user_bear_just_bear": "assets/svg/bear/user_bear_just_bear.svg",
+  "user_bear_drum_ready": "assets/svg/bear/user_bear_drum_ready.svg",
+  "user_bear_drum_motion": "assets/svg/bear/user_bear_drum_motion.svg",
+  "user_bear_drum_left_stick": "assets/svg/bear/user_bear_drum_left_stick.svg",
+  "user_bear_drum_right_stick": "assets/svg/bear/user_bear_drum_right_stick.svg",
   "count_1_active": "assets/svg/ui/count_1_active.svg",
   "count_1_passive": "assets/svg/ui/count_1_passive.svg",
   "count_2_active": "assets/svg/ui/count_2_active.svg",
@@ -753,13 +753,13 @@ function loadImages(cb){
   document.getElementById('imgBearJustBear').src=SVGS['computer_bear_just_bear'];
   document.getElementById('imgBearDrumReady').src=SVGS['computer_bear_drum_ready'];
   document.getElementById('imgBearDrumMotion').src=SVGS['computer_bear_drum_motion'];
-  document.getElementById('imgBearLeftStick').src=SVGS['computer_bear_left_stick'];
-  document.getElementById('imgBearRightStick').src=SVGS['computer_bear_right_stick'];
-  document.getElementById('imgBoxBearJustBear').src=SVGS['user_bear_box_just_bear'];
-  document.getElementById('imgBoxBearDrumReady').src=SVGS['user_bear_box_drum_ready'];
-  document.getElementById('imgBoxBearDrumMotion').src=SVGS['user_bear_box_drum_motion'];
-  document.getElementById('imgBoxBearLeftStick').src=SVGS['user_bear_box_left_stick'];
-  document.getElementById('imgBoxBearRightStick').src=SVGS['user_bear_box_right_stick'];
+  document.getElementById('imgBearLeftStick').src=SVGS['computer_bear_drum_left_stick'];
+  document.getElementById('imgBearRightStick').src=SVGS['computer_bear_drum_right_stick'];
+  document.getElementById('imgBoxBearJustBear').src=SVGS['user_bear_just_bear'];
+  document.getElementById('imgBoxBearDrumReady').src=SVGS['user_bear_drum_ready'];
+  document.getElementById('imgBoxBearDrumMotion').src=SVGS['user_bear_drum_motion'];
+  document.getElementById('imgBoxBearLeftStick').src=SVGS['user_bear_drum_left_stick'];
+  document.getElementById('imgBoxBearRightStick').src=SVGS['user_bear_drum_right_stick'];
 }
 
 // ── METRONOME SOUND BUFFERS ───────────────────────────────────
