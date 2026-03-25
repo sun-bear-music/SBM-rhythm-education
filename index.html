@@ -55,12 +55,12 @@ SVG ASSETS (all embedded as base64)
     repeat_sign               — repeat barline (used on last bar when repeats > 0)
 
   BEAR ANIMATION (5 states):
-    bear_just_bear            — default pose (shown when nothing is playing)
-    bear_drum_ready           — shown during all but the last count of the count-in
-    bear_drum_motion          — shown on the last count of the count-in; also between hits during playback
-    bear_left_stick           — left stick hitting drum (alternates during playback)
-    bear_right_stick          — right stick hitting drum (alternates during playback)
-    On finish: returns to bear_just_bear (no yay animation)
+    computer_bear_just_bear   — default pose (shown when nothing is playing)
+    computer_bear_drum_ready  — shown during all but the last count of the count-in
+    computer_bear_drum_motion — shown on the last count of the count-in; also between hits during playback
+    computer_bear_left_stick  — left stick hitting drum (alternates during playback)
+    computer_bear_right_stick — right stick hitting drum (alternates during playback)
+    On finish: returns to computer_bear_just_bear (no yay animation)
 
 ─────────────────────────────────────────────────────────────────────────────
 LAYOUT SYSTEM — BEAT GRID
@@ -269,12 +269,11 @@ DUET MODE — PLANNED FEATURE (designed, not yet built)
   BEAR SVG NAMING CONVENTION
     New bear assets follow the pattern:
       bear_{state}_{object}
-    where state is one of: just_bear, drum_ready, drum_motion,
-    left_stick, right_stick
-    and object is one of: drum (existing), shoe, box, saucepan, bongo
-    Example: bear_left_stick_shoe, bear_right_stick_box
-    This allows the code to construct asset names dynamically from
-    (current bear state) + (current object) without a large lookup table.
+    Format: {computer|user}_bear_{item}_{position}
+    When no item: {computer|user}_bear_just_bear
+    Items: drum, box, fish, shoe, saucepan, bongo, etc.
+    Example: user_bear_box_left_stick, user_bear_fish_right_stick
+    This allows the code to construct asset names dynamically.
     All new SVGs should share the same viewBox dimensions and staff-line
     anchor point as the existing bear assets.
 
@@ -505,13 +504,6 @@ HOW TO CONTINUE DEVELOPMENT
   .info-note{font-size:0.75rem;color:var(--amber);margin-top:6px;font-weight:600;}
 
   /* ── Latency calibration widget ── */
-  .cal-lights{display:flex;gap:10px;justify-content:center;margin:10px 0 14px;}
-  .cal-light{width:28px;height:28px;border-radius:50%;background:var(--parchment);border:2px solid var(--cream-dark);transition:background 0.04s,box-shadow 0.04s;}
-  .cal-light.flash{background:#E9C84D;box-shadow:0 0 10px 3px rgba(233,200,77,0.6);}
-  .cal-desc{font-size:0.78rem;color:var(--text-muted);text-align:center;margin-bottom:10px;line-height:1.4;}
-  .cal-btn{padding:5px 18px;border-radius:20px;border:1.5px solid var(--teal);background:transparent;color:var(--teal);font-size:0.8rem;font-weight:700;cursor:pointer;transition:all 0.12s;}
-  .cal-btn:hover{background:var(--teal);color:white;}
-  .cal-btn.running{background:var(--teal);color:white;}
 
   /* ── Portrait mode overlay ── */
   .portrait-overlay{
@@ -684,19 +676,7 @@ HOW TO CONTINUE DEVELOPMENT
         <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Repeats <span class="acc-val" id="valRepeats">No repeat</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="radio-group" id="repeatsGroup"><div class="radio-chip selected" data-val="0" onclick="setRepeats(0)">No repeat</div><div class="radio-chip" data-val="1" onclick="setRepeats(1)">x2 total</div><div class="radio-chip" data-val="3" onclick="setRepeats(3)">x4 total</div><div class="radio-chip" data-val="7" onclick="setRepeats(7)">x8 total</div><div class="radio-chip" data-val="99" onclick="setRepeats(99)">&#8734;</div></div></div></div></div>
         <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Drum Volume <span class="acc-val" id="valAssistVol">80%</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="form-row"><label>Volume</label><input type="range" id="assistVol" min="0" max="100" value="80" oninput="updateAssistVol(this.value)"><span class="val-badge" id="assistVolVal">80%</span></div></div></div></div>
         <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Assistance <span class="acc-val" id="valAssistance">Beat &amp; Bar on</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="form-row"><label>Beat highlight</label><div class="radio-group" id="beatHighlightGroup"><div class="radio-chip selected" data-val="on" onclick="setBeatHighlight('on')">On</div><div class="radio-chip" data-val="off" onclick="setBeatHighlight('off')">Off</div></div></div><div class="form-row"><label>Bar highlight</label><div class="radio-group" id="barHighlightGroup"><div class="radio-chip selected" data-val="on" onclick="setBarHighlight('on')">On</div><div class="radio-chip" data-val="off" onclick="setBarHighlight('off')">Off</div></div></div></div></div></div>
-        <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Audio Latency <span class="acc-val" id="valLatency">0 ms</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content">
-          <p class="cal-desc">Adjust the slider until the flashing lights and sounds feel perfectly in sync. Move right if the sound arrives after the flash; left if before.</p>
-          <div class="cal-lights">
-            <div class="cal-light" id="calLight0"></div>
-            <div class="cal-light" id="calLight1"></div>
-            <div class="cal-light" id="calLight2"></div>
-            <div class="cal-light" id="calLight3"></div>
-          </div>
-          <div class="form-row"><label>Offset</label><input type="range" id="latencySlider" min="-200" max="200" value="0" oninput="updateLatency(this.value)"><span class="val-badge" id="latencyVal">0 ms</span></div>
-          <div class="form-row" style="justify-content:center;margin-top:6px;">
-            <button class="cal-btn" id="calBtn" onclick="toggleCalibration()">Start</button>
-          </div>
-        </div></div></div>
+
       </div>
     </div>
   </div>
@@ -711,16 +691,16 @@ HOW TO CONTINUE DEVELOPMENT
 <script>
 const SVGS = {
   "bar_line": "assets/svg/barlines/bar_line.svg",
-  "bear_drum_motion": "assets/svg/bear/bear_drum_motion.svg",
-  "bear_drum_ready": "assets/svg/bear/bear_drum_ready.svg",
-  "bear_just_bear": "assets/svg/bear/bear_just_bear.svg",
-  "bear_left_stick": "assets/svg/bear/bear_left_stick.svg",
-  "bear_right_stick": "assets/svg/bear/bear_right_stick.svg",
-  "box_bear_just_bear": "assets/svg/bear/box_bear_just_bear.svg",
-  "box_bear_drum_ready": "assets/svg/bear/box_bear_drum_ready.svg",
-  "box_bear_drum_motion": "assets/svg/bear/box_bear_drum_motion.svg",
-  "box_bear_left_stick": "assets/svg/bear/box_bear_left_stick.svg",
-  "box_bear_right_stick": "assets/svg/bear/box_bear_right_stick.svg",
+  "computer_bear_drum_motion": "assets/svg/bear/computer_bear_drum_motion.svg",
+  "computer_bear_drum_ready": "assets/svg/bear/computer_bear_drum_ready.svg",
+  "computer_bear_just_bear": "assets/svg/bear/computer_bear_just_bear.svg",
+  "computer_bear_left_stick": "assets/svg/bear/computer_bear_left_stick.svg",
+  "computer_bear_right_stick": "assets/svg/bear/computer_bear_right_stick.svg",
+  "user_bear_box_just_bear": "assets/svg/bear/user_bear_box_just_bear.svg",
+  "user_bear_box_drum_ready": "assets/svg/bear/user_bear_box_drum_ready.svg",
+  "user_bear_box_drum_motion": "assets/svg/bear/user_bear_box_drum_motion.svg",
+  "user_bear_box_left_stick": "assets/svg/bear/user_bear_box_left_stick.svg",
+  "user_bear_box_right_stick": "assets/svg/bear/user_bear_box_right_stick.svg",
   "count_1_active": "assets/svg/ui/count_1_active.svg",
   "count_1_passive": "assets/svg/ui/count_1_passive.svg",
   "count_2_active": "assets/svg/ui/count_2_active.svg",
@@ -770,21 +750,21 @@ const IMG={};
 function loadImages(cb){
   const entries=Object.entries(SVGS);let done=0;
   entries.forEach(([k,src])=>{const img=new Image();img.onload=img.onerror=()=>{if(++done===entries.length)cb();};img.src=src;IMG[k]=img;});
-  document.getElementById('imgBearJustBear').src=SVGS['bear_just_bear'];
-  document.getElementById('imgBearDrumReady').src=SVGS['bear_drum_ready'];
-  document.getElementById('imgBearDrumMotion').src=SVGS['bear_drum_motion'];
-  document.getElementById('imgBearLeftStick').src=SVGS['bear_left_stick'];
-  document.getElementById('imgBearRightStick').src=SVGS['bear_right_stick'];
-  document.getElementById('imgBoxBearJustBear').src=SVGS['box_bear_just_bear'];
-  document.getElementById('imgBoxBearDrumReady').src=SVGS['box_bear_drum_ready'];
-  document.getElementById('imgBoxBearDrumMotion').src=SVGS['box_bear_drum_motion'];
-  document.getElementById('imgBoxBearLeftStick').src=SVGS['box_bear_left_stick'];
-  document.getElementById('imgBoxBearRightStick').src=SVGS['box_bear_right_stick'];
+  document.getElementById('imgBearJustBear').src=SVGS['computer_bear_just_bear'];
+  document.getElementById('imgBearDrumReady').src=SVGS['computer_bear_drum_ready'];
+  document.getElementById('imgBearDrumMotion').src=SVGS['computer_bear_drum_motion'];
+  document.getElementById('imgBearLeftStick').src=SVGS['computer_bear_left_stick'];
+  document.getElementById('imgBearRightStick').src=SVGS['computer_bear_right_stick'];
+  document.getElementById('imgBoxBearJustBear').src=SVGS['user_bear_box_just_bear'];
+  document.getElementById('imgBoxBearDrumReady').src=SVGS['user_bear_box_drum_ready'];
+  document.getElementById('imgBoxBearDrumMotion').src=SVGS['user_bear_box_drum_motion'];
+  document.getElementById('imgBoxBearLeftStick').src=SVGS['user_bear_box_left_stick'];
+  document.getElementById('imgBoxBearRightStick').src=SVGS['user_bear_box_right_stick'];
 }
 
 // ── METRONOME SOUND BUFFERS ───────────────────────────────────
 const METRONOME_SOUNDS=['Agogo','Bongo','Click','Shaker','Triangle','Woodblock'];
-const SOUND_BUFFERS={}; // { 'High_Click': AudioBuffer, 'Low_Click': AudioBuffer, ... }
+const SOUND_BUFFERS={};
 
 function loadSounds(){
   const ac=getAC();
@@ -950,7 +930,7 @@ const LEVELS=[
   {num:8,label:'Level 8',desc:'+ triplets',                 pool:['ta','sah','ti-ti','ti','si','tika-tika','tika-ti','ti-tika','timka','tika','tahm','sahm','tika-ka','seka-ti','triplet','triola','triola-ti','ti-triola','triola-triola']},
 ];
 
-const S={bars:2,tempo:80,timeSig:'4/4',countInBars:1,metronome:'both',metronomeVol:0.6,repeats:0,assistVol:0.8,assistMode:'duet',level:4,latencyOffset:0,metronomeSound:'Click'};
+const S={bars:2,tempo:80,timeSig:'4/4',countInBars:1,metronome:'both',metronomeVol:0.6,repeats:0,assistVol:0.8,assistMode:'duet',level:4,metronomeSound:'Click'};
 let drumEnabled=true;
 let barHighlightEnabled=true;
 let noteHighlightEnabled=true;
@@ -1242,7 +1222,14 @@ let _stickSide=0;
 const audioNodes=[];
 function stopAllAudio(){audioNodes.forEach(n=>{try{n.stop();}catch(e){}});audioNodes.length=0;}
 function trackNode(n){audioNodes.push(n);return n;}
-function getAC(){if(!PS.audioCtx)PS.audioCtx=new(window.AudioContext||window.webkitAudioContext)();return PS.audioCtx;}
+function getAC(){
+  if(!PS.audioCtx){
+    PS.audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    // Load sounds now that we have a running AudioContext (requires user gesture)
+    loadSounds();
+  }
+  return PS.audioCtx;
+}
 function clearAll(){PS.ids.forEach(clearTimeout);PS.ids=[];stopAllAudio();}
 function at(fn,ms){const id=setTimeout(fn,Math.max(0,ms));PS.ids.push(id);return id;}
 function bdSec(){return 60/S.tempo;}
@@ -1269,7 +1256,6 @@ function playClick(t,accent,vol){
     g.gain.setValueAtTime(v,t);
     s.start(t);
   } else {
-    // Fallback to synthesised click if WAV not loaded yet
     const o=trackNode(ac.createOscillator()),g=ac.createGain();
     o.connect(g);g.connect(ac.destination);
     o.type='sine';o.frequency.value=accent?1200:900;
@@ -1555,66 +1541,11 @@ function setBarHighlight(v){
 }
 
 // ── LATENCY CALIBRATION ──────────────────────────────────────
-let _calRunning=false, _calIds=[], _calBeat=0;
-const CAL_BPM=72, CAL_BEATS=4;
 
-function updateLatency(v){
-  v=parseInt(v);
-  S.latencyOffset=v;
-  document.getElementById('latencyVal').textContent=`${v} ms`;
-  document.getElementById('valLatency').textContent=`${v} ms`;
-  document.getElementById('latencySlider').value=v;
-}
 
-function toggleCalibration(){
-  if(_calRunning) stopCalibration(); else startCalibration();
-}
-
-function startCalibration(){
-  _calRunning=true;
-  document.getElementById('calBtn').textContent='Stop';
-  document.getElementById('calBtn').classList.add('running');
-  _calBeat=0;
-  scheduleCalBeat();
-}
-
-function stopCalibration(){
-  _calRunning=false;
-  _calIds.forEach(clearTimeout); _calIds=[];
-  document.getElementById('calBtn').textContent='Start';
-  document.getElementById('calBtn').classList.remove('running');
-  // Clear all lights
-  for(let i=0;i<CAL_BEATS;i++) document.getElementById('calLight'+i).classList.remove('flash');
-}
-
-function scheduleCalBeat(){
-  if(!_calRunning) return;
-  const intervalMs = 60000/CAL_BPM;
-  const lightIdx = _calBeat % CAL_BEATS;
-
-  // Flash the light immediately (visual — no offset)
-  const lightEl = document.getElementById('calLight'+lightIdx);
-  lightEl.classList.add('flash');
-  const offId = setTimeout(()=>lightEl.classList.remove('flash'), 80);
-  _calIds.push(offId);
-
-  // Play click sound. Positive latencyOffset means speaker is slow by that many ms,
-  // so we schedule the sound that many ms EARLIER than the light flash.
-  const ac = getAC();
-  const advanceSec = Math.max(0, S.latencyOffset) / 1000;
-  playClick(ac.currentTime + advanceSec + 0.005, lightIdx===0, 0.7);
-
-  _calBeat++;
-  const nextId = setTimeout(scheduleCalBeat, intervalMs);
-  _calIds.push(nextId);
-}
 
 // Stop calibration when settings modal closes
-const _origCloseSettings = closeSettings;
-closeSettings = function(){
-  stopCalibration();
-  _origCloseSettings();
-};
+
 
 function buildLevels(){
   const c=document.getElementById('levelChips');
@@ -1686,7 +1617,7 @@ function scoreTaps(){
   const dots=[];
 
   // Match each tap to nearest unmatched expected hit within DOT_WINDOW
-  const tapTimes = tapLog.map(t => (t - repeatStartPerfTime) - S.latencyOffset);
+  const tapTimes = tapLog.map(t => (t - repeatStartPerfTime));
   const usedTaps = new Set();
 
   for(let ei=0; ei<expected.length; ei++){
@@ -1833,7 +1764,6 @@ window.addEventListener('load',()=>{
   layoutSizes();
   initInputHandlers();
   loadImages(()=>{generateNewRhythm();positionBeatNums();});
-  loadSounds();
 });
 window.addEventListener('resize',()=>{layoutSizes();drawAllBars();positionBeatNums();});
 
