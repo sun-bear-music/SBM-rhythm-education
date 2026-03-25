@@ -278,6 +278,17 @@ DUET MODE — PLANNED FEATURE (designed, not yet built)
     anchor point as the existing bear assets.
 
 ─────────────────────────────────────────────────────────────────────────────
+MODE SCAFFOLD
+─────────────────────────────────────────────────────────────────────────────
+  Three modes: Play, Practise, Perform.
+  currentMode: null (start screen), "play", "practise", "perform"
+  enterMode(mode): shows correct screens, hides others, manages settings visibility
+  goHome(): stops playback, returns to start screen
+  Settings cog: visible in Practise only
+  Home button: top right of countBar, visible in all active modes
+  Play and Perform are placeholders — built out in future sessions.
+
+─────────────────────────────────────────────────────────────────────────────
 KNOWN REMAINING ISSUES / FUTURE WORK
 ─────────────────────────────────────────────────────────────────────────────
   - anchorY calibration may need fine-tuning (notehead vertical position on line)
@@ -599,6 +610,96 @@ HOW TO CONTINUE DEVELOPMENT
   @media (orientation:portrait) and (max-width:768px){
     .portrait-overlay{display:flex;}
   }
+
+  /* ── Start screen ── */
+  #startScreen{
+    position:fixed;inset:0;
+    background:var(--bg);
+    z-index:500;
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    gap:0;
+  }
+  #startScreen.hidden{display:none;}
+  #startTitle{
+    font-family:'Trebuchet MS',Verdana,sans-serif;
+    font-size:1.6rem;font-weight:900;
+    color:var(--cream);
+    letter-spacing:0.04em;
+    margin-bottom:18px;
+    text-align:center;
+  }
+  #startBears{
+    display:flex;flex-direction:row;
+    align-items:flex-end;justify-content:center;
+    gap:24px;
+    flex:1;
+    min-height:0;
+    padding:24px 0 0;
+  }
+  .start-bear{
+    height:100%;
+    max-height:340px;
+    aspect-ratio:1/1;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .start-bear img{
+    width:100%;height:100%;
+    object-fit:contain;
+    transform:scale(0.74);
+    transform-origin:top center;
+  }
+  #startButtons{
+    display:flex;flex-direction:row;
+    align-items:center;justify-content:center;
+    gap:16px;
+    padding:24px 24px 36px;
+    flex-shrink:0;
+  }
+  .mode-btn{
+    font-family:'Trebuchet MS',Verdana,sans-serif;
+    font-size:1.05rem;font-weight:700;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    padding:14px 32px;
+    border-radius:var(--radius);
+    border:2.5px solid var(--teal);
+    background:transparent;
+    color:var(--cream);
+    cursor:pointer;
+    transition:background 0.15s, color 0.15s, transform 0.1s;
+    min-width:120px;
+  }
+  .mode-btn:hover{background:var(--teal);color:white;transform:scale(1.04);}
+  .mode-btn:active{transform:scale(0.97);}
+  .mode-btn.mode-btn-primary{background:var(--teal);color:white;}
+  .mode-btn.mode-btn-primary:hover{background:var(--teal-light);}
+
+  /* ── Home button (top right, all modes) ── */
+  #homeBtn{
+    position:absolute;right:10px;top:50%;transform:translateY(-50%);
+    width:36px;height:36px;border-radius:50%;
+    background:none;border:none;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    z-index:10;flex-shrink:0;
+    font-size:1.1rem;
+    color:rgba(255,250,239,0.55);
+    transition:color 0.15s;
+  }
+  #homeBtn:hover{color:var(--cream);}
+
+  /* ── Mode placeholder screens ── */
+  .mode-placeholder{
+    flex:1;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    gap:12px;
+    color:rgba(255,250,239,0.35);
+    font-family:'Trebuchet MS',Verdana,sans-serif;
+    font-size:1.1rem;font-weight:700;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+  }
+  .mode-placeholder span{font-size:2.5rem;}
 </style>
 </head>
 <body>
@@ -608,6 +709,9 @@ HOW TO CONTINUE DEVELOPMENT
   <div id="countBar">
     <button id="settingsBtn" onclick="openSettings()" aria-label="Settings">
       <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+CjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+Cjxzdmcgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDc4IDc2IiB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHhtbDpzcGFjZT0icHJlc2VydmUiIHhtbG5zOnNlcmlmPSJodHRwOi8vd3d3LnNlcmlmLmNvbS8iIHN0eWxlPSJmaWxsLXJ1bGU6ZXZlbm9kZDtjbGlwLXJ1bGU6ZXZlbm9kZDtzdHJva2UtbGluZWNhcDpyb3VuZDtzdHJva2UtbGluZWpvaW46cm91bmQ7c3Ryb2tlLW1pdGVybGltaXQ6MS41OyI+CiAgICA8ZyB0cmFuc2Zvcm09Im1hdHJpeCgxLDAsMCwxLC0zNjAuMDAzLC0xOTAzLjUpIj4KICAgICAgICA8ZyB0cmFuc2Zvcm09Im1hdHJpeCgxLDAsMCwxLC0xNDcuNTE2LDY5MC4yMDQpIj4KICAgICAgICAgICAgPGcgaWQ9InNldHRpbmdzIj4KICAgICAgICAgICAgICAgIDxwYXRoIGQ9Ik01NTAuNzU3LDEyMTUuNjhMNTUyLjI5NCwxMjIxLjQxQzU1NS4yNjksMTIyMi4wMSA1NTguMTM5LDEyMjMuMDQgNTYwLjgxLDEyMjQuNDdMNTY1LjcxOCwxMjIxLjA2QzU2OC4zNjksMTIyMi43MyA1NzAuNzg5LDEyMjQuNzQgNTcyLjkxOSwxMjI3LjAyTDU3MC4zNjYsMTIzMi4zOEM1NzIuMjUzLDEyMzQuNzMgNTczLjc3OSwxMjM3LjM0IDU3NC44OTcsMTI0MC4xM0w1ODAuODc5LDEyNDAuNjNDNTgxLjgyLDEyNDMuNTkgNTgyLjM2OSwxMjQ2LjY2IDU4Mi41MTIsMTI0OS43N0w1NzcuMDYzLDEyNTIuMjZDNTc2Ljk3OSwxMjU1LjI1IDU3Ni40NDgsMTI1OC4yMiA1NzUuNDksMTI2MS4wN0w1NzkuNzQ3LDEyNjUuMjRDNTc4LjUzOCwxMjY4LjExIDU3Ni45NTgsMTI3MC44MSA1NzUuMDQ3LDEyNzMuMjhMNTY5LjI1MywxMjcxLjczQzU2Ny4yMzYsMTI3My45NyA1NjQuODk3LDEyNzUuOTEgNTYyLjMxLDEyNzcuNDhMNTYyLjg1MSwxMjgzLjM4QzU2MC4wNTcsMTI4NC44MSA1NTcuMDg4LDEyODUuODggNTU0LjAxOCwxMjg2LjU1TDU1MC41ODgsMTI4MS42OUM1NDcuNTg0LDEyODIuMTMgNTQ0LjUzLDEyODIuMTMgNTQxLjUyNiwxMjgxLjY5TDUzOC4wOTcsMTI4Ni41NUM1MzUuMDI2LDEyODUuODggNTMyLjA1NywxMjg0LjgxIDUyOS4yNjMsMTI4My4zOEw1MjkuODA0LDEyNzcuNDhDNTI3LjIxNywxMjc1LjkxIDUyNC44NzgsMTI3My45NyA1MjIuODYyLDEyNzEuNzNMNTE3LjA2NywxMjczLjI4QzUxNS4xNTYsMTI3MC44MSA1MTMuNTc2LDEyNjguMTEgNTEyLjM2NywxMjY1LjI0TDUxNi42MjUsMTI2MS4wN0M1MTUuNjY2LDEyNTguMjIgNTE1LjEzNiwxMjU1LjI1IDUxNS4wNTEsMTI1Mi4yNkw1MDkuNjAzLDEyNDkuNzdDNTA5Ljc0NSwxMjQ2LjY2IDUxMC4yOTQsMTI0My41OSA1MTEuMjM1LDEyNDAuNjNMNTE3LjIxNywxMjQwLjEzQzUxOC4zMzUsMTIzNy4zNCA1MTkuODYyLDEyMzQuNzMgNTIxLjc0OCwxMjMyLjM4TDUxOS4xOTUsMTIyNy4wMkM1MjEuMzI1LDEyMjQuNzQgNTIzLjc0NSwxMjIyLjczIDUyNi4zOTYsMTIyMS4wNkw1MzEuMzA0LDEyMjQuNDdDNTMzLjk3NiwxMjIzLjA0IDUzNi44NDUsMTIyMi4wMSA1MzkuODIsMTIyMS40MUw1NDEuMzU3LDEyMTUuNjhDNTQ0LjQ3NywxMjE1LjI4IDU0Ny42MzcsMTIxNS4yOCA1NTAuNzU3LDEyMTUuNjhaTTU0Ni4wNTcsMTI0NC4yQzU1MC4wODUsMTI0NC4yIDU1My4zNTYsMTI0Ny40MyA1NTMuMzU2LDEyNTEuNEM1NTMuMzU2LDEyNTUuMzggNTUwLjA4NSwxMjU4LjYxIDU0Ni4wNTcsMTI1OC42MUM1NDIuMDI5LDEyNTguNjEgNTM4Ljc1OSwxMjU1LjM4IDUzOC43NTksMTI1MS40QzUzOC43NTksMTI0Ny40MyA1NDIuMDI5LDEyNDQuMiA1NDYuMDU3LDEyNDQuMloiIHN0eWxlPSJmaWxsOm5vbmU7c3Ryb2tlOnJnYigyNTUsMjUwLDIzOSk7c3Ryb2tlLXdpZHRoOjQuMTdweDsiLz4KICAgICAgICAgICAgPC9nPgogICAgICAgIDwvZz4KICAgIDwvZz4KPC9zdmc+Cg==" alt="Settings" style="width:26px;height:26px;display:block;">
+    </button>
+    <button id="homeBtn" onclick="goHome()" aria-label="Home" title="Back to start screen">
+      <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+CjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+Cjxzdmcgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDc2IDc2IiB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHhtbDpzcGFjZT0icHJlc2VydmUiIHhtbG5zOnNlcmlmPSJodHRwOi8vd3d3LnNlcmlmLmNvbS8iIHN0eWxlPSJmaWxsLXJ1bGU6ZXZlbm9kZDtjbGlwLXJ1bGU6ZXZlbm9kZDtzdHJva2UtbGluZWNhcDpyb3VuZDtzdHJva2UtbGluZWpvaW46cm91bmQ7c3Ryb2tlLW1pdGVybGltaXQ6MS41OyI+CiAgICA8ZyB0cmFuc2Zvcm09Im1hdHJpeCgxLDAsMCwxLC0xMzk3LjUyLC0xNzY5LjU3KSI+CiAgICAgICAgPGcgdHJhbnNmb3JtPSJtYXRyaXgoMSwwLDAsMSw4MDkuMDU1LC0xMDYyLjk5KSI+CiAgICAgICAgICAgIDxwYXRoIGQ9Ik02MjUuOTg0LDI4MzQuNjVMNjYxLjQxNywyODU4LjI3TDY2MS40MTcsMjkwNS41MUw1OTAuNTUxLDI5MDUuNTFMNTkwLjU1MSwyODU4LjI3TDYyNS45ODQsMjgzNC42NVoiIHN0eWxlPSJmaWxsOm5vbmU7c3Ryb2tlOnJnYigyNTUsMjUwLDIzOSk7c3Ryb2tlLXdpZHRoOjQuMTdweDsiLz4KICAgICAgICA8L2c+CiAgICA8L2c+Cjwvc3ZnPgo=" alt="Home" style="width:26px;height:26px;display:block;">
     </button>
     <div id="beatNums"></div>
   </div>
@@ -650,6 +754,16 @@ HOW TO CONTINUE DEVELOPMENT
     <div class="side-pad" id="rightPad"></div>
   </div>
 
+  <!-- Play mode placeholder -->
+  <div id="playScreen" style="display:none;flex:1;flex-direction:column;">
+    <div class="mode-placeholder"><span>🐻</span>Play Mode — Coming Soon</div>
+  </div>
+
+  <!-- Perform mode placeholder -->
+  <div id="performScreen" style="display:none;flex:1;flex-direction:column;">
+    <div class="mode-placeholder"><span>⭐</span>Perform Mode — Coming Soon</div>
+  </div>
+
   <!-- Hidden JS targets -->
   <span class="hidden-for-js" id="bearLabel"></span>
   <span class="hidden-for-js" id="statusText"></span>
@@ -657,6 +771,21 @@ HOW TO CONTINUE DEVELOPMENT
   <span class="hidden-for-js" id="countinDisplay"></span>
   <span class="hidden-for-js" id="repeatCounter"></span>
 
+</div>
+
+
+<!-- Start Screen -->
+<div id="startScreen">
+  <div id="startBears">
+    <div class="start-bear"><img id="startImgComputer" src="" alt="Computer bear"></div>
+    <div class="start-bear"><img id="startImgUser" src="" alt="User bear"></div>
+  </div>
+  <div id="startTitle">Drum Bear Duo</div>
+  <div id="startButtons">
+    <button class="mode-btn" onclick="enterMode('play')">Play</button>
+    <button class="mode-btn mode-btn-primary" onclick="enterMode('practise')">Practise</button>
+    <button class="mode-btn" onclick="enterMode('perform')">Perform</button>
+  </div>
 </div>
 
 <!-- Settings Modal -->
@@ -1757,15 +1886,80 @@ function initInputHandlers(){
   });
 }
 
+// ── MODE MANAGEMENT ─────────────────────────────────────────
+let currentMode = null; // null = start screen
+
+const modeScreens = {
+  practise: ['countBar','staveArea','feedbackStrip','bearZone'],
+  play:     ['countBar','playScreen'],
+  perform:  ['countBar','performScreen'],
+};
+
+function showStartScreen(){
+  // Stop any playback
+  if(PS && PS.playing) clearAll();
+  currentMode = null;
+  document.getElementById('startScreen').classList.remove('hidden');
+  // Hide all mode content
+  ['countBar','staveArea','feedbackStrip','bearZone','playScreen','performScreen']
+    .forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
+}
+
+function enterMode(mode){
+  currentMode = mode;
+  document.getElementById('startScreen').classList.add('hidden');
+
+  // Hide everything first
+  ['countBar','staveArea','feedbackStrip','bearZone','playScreen','performScreen']
+    .forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
+
+  // Show what this mode needs
+  (modeScreens[mode]||[]).forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    // restore appropriate display type
+    if(id==='countBar')       el.style.display='flex';
+    else if(id==='staveArea') el.style.display='flex';
+    else if(id==='feedbackStrip') el.style.display='block';
+    else if(id==='bearZone')  el.style.display='flex';
+    else if(id==='playScreen'||id==='performScreen') el.style.display='flex';
+  });
+
+  // Settings cog only visible in practise
+  document.getElementById('settingsBtn').style.visibility =
+    mode === 'practise' ? 'visible' : 'hidden';
+
+  if(mode === 'practise'){
+    layoutSizes();
+    drawAllBars();
+    positionBeatNums();
+  }
+}
+
+function goHome(){
+  if(PS && PS.playing) clearAll();
+  showStartScreen();
+}
+
 window.addEventListener('load',()=>{
   buildLevels();
   buildBeatDisplay();
   enforceTimeSigForLevel();
   layoutSizes();
   initInputHandlers();
-  loadImages(()=>{generateNewRhythm();positionBeatNums();});
+  loadImages(()=>{
+    // Set start screen bear images
+    document.getElementById('startImgComputer').src = SVGS['computer_bear_just_bear'];
+    document.getElementById('startImgUser').src     = SVGS['user_bear_just_bear'];
+    // Begin on start screen
+    showStartScreen();
+    generateNewRhythm();
+    positionBeatNums();
+  });
 });
-window.addEventListener('resize',()=>{layoutSizes();drawAllBars();positionBeatNums();});
+window.addEventListener('resize',()=>{
+  if(currentMode==='practise'){ layoutSizes();drawAllBars();positionBeatNums(); }
+});
 
 </script>
 </body>
