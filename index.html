@@ -174,108 +174,39 @@ SETTINGS (modal overlay, opened via ⚙ Settings button in transport bar)
   Assistance Mode: Duet / Listen First / Play First
 
 ─────────────────────────────────────────────────────────────────────────────
-DUET MODE — PLANNED FEATURE (designed, not yet built)
+PLAY MODE — FREE-PLAY SANDBOX
 ─────────────────────────────────────────────────────────────────────────────
-  CONCEPT
-    A second interactive play mode where the user taps along to the rhythm
-    while the computer plays it perfectly. Two bears play a duet — the
-    computer bear always has a drum; the user bear's instrument changes
-    based on their previous score (see OBJECT LADDER below).
+  No stave, no rhythm generation. Just two bears and a radio.
 
-  CORE MECHANIC
-    - A "Start Duet" button arms the tap listener (separate from the
-      existing whole-screen play/stop tap, which must be preserved)
-    - Count-in plays as normal — user listens, then taps along
-    - Tap events (touchstart / mousedown) are timestamped and compared
-      against the rhythm timeline's expected beat offsets
-    - Rests: taps during rest positions are ignored or lightly penalised
-    - After the rhythm finishes, scoring and note annotation are shown
+  LAYOUT (landscape only)
+    Top:    Radio widget — power button + dial + green LED display
+    Below:  Left pad | Computer bear | User bear | Right pad
 
-  TIMING TOLERANCE (suggested, tune per level)
-    - ≤ 80ms from expected → perfect
-    - 80–150ms early or late → close
-    - 150–300ms early or late → marginal
-    - > 300ms, or no tap → miss
-    Consider tightening windows at higher levels, loosening at lower levels.
-    Note: mobile audio/touch latency may require a small fixed calibration
-    offset — worth testing on iPad and iPhone early.
+  TAP PADS
+    Left pad  → computer bear hits its instrument
+    Right pad → user bear hits its instrument
+    Bear stage tap → cycles that bear's instrument
 
-  SCORING — STARS OUT OF 5
-    Star rating based on percentage of notes that land "close" or better.
-    Displayed after each round with a fun callout (not clinical).
+  INSTRUMENTS (PLAY_ITEMS array)
+    Current: drum, box, bin, ball, fish
+    Each has synthesised placeholder sound (swap for WAV in playItemSound()).
+    Each requires 4 SVGs: {who}_bear_{item}_{ready|motion|left_stick|right_stick}
+    Add more items by appending to PLAY_ITEMS + PLAY_ITEM_NAMES + providing SVGs.
 
-  POST-PLAY ANNOTATION — SCATTER DOT SYSTEM
-    After the rhythm finishes, draw coloured dots below the stave on each
-    bar canvas — one dot per expected tap (and one per erroneous tap).
-    Dots are positioned horizontally in musical time, not just under the
-    notehead, giving an intuitive "footprint" of the user's performance.
+  RADIO
+    Power button: toggleRadio() — toggles backing audio on/off
+    Dial: cycleRadioTrack() — cycles through RADIO_TRACKS array
+    Display: green LED showing track name or "Off"
+    Add tracks to RADIO_TRACKS: { name: 'Title', src: 'assets/audio/file.mp3' }
+    Dial rotates visually with each cycle.
 
-    HORIZONTAL POSITION
-      The x position of a dot reflects when the user actually played:
-        pixel offset = (tap error in ms / ms per beat) * BEAT_W
-      A tap 50ms early shifts the dot left; 50ms late shifts it right.
-      A perfect tap sits directly below the notehead.
-      Cap offset at ±(BEAT_W / 2) so dots don't overlap adjacent notes.
+  BEAR STATE MANAGEMENT
+    PB object: { computer: { item, stickSide }, user: { item, stickSide } }
+    buildPlayBearImages(who): regenerates bear img elements for current item
+    setPlayBear(who, state): ready | motion | leftstick | rightstick
+    hitPlayBear(who): plays sound + animates stick hit, bounces back to motion
+    cyclePlayBearItem(who): advances item, rebuilds images, flashes label
 
-    DOT COLOUR
-      - Green  → perfect or close (≤ 150ms)
-      - Amber  → marginal (150–300ms early or late)
-      - Red    → miss (> 300ms) or no tap (dot centred on expected position)
-
-    ERRONEOUS TAPS
-      - Tap on a rest → small ✕ mark in dark/neutral colour below rest position
-      - Extra tap on a single note (e.g. double-tapping a crotchet) →
-        small black dot offset slightly right of the note (registers as
-        a late second hit with no matching note in the timeline)
-
-    GROUPED NOTES (single SVG, multiple hits)
-      e.g. ti-ti, tika-tika, tika-ti etc. — each sub-hit gets its own
-      dot positioned at its own expected x coordinate within the group.
-      This works naturally with the scatter system since sub-hit x positions
-      are already known from the beat-grid coordinate system.
-      No need to colour or split the SVG itself.
-
-  OBJECT LADDER — USER BEAR'S INSTRUMENT
-    Determined by the PREVIOUS round's star rating (first round = drum,
-    benefit of the doubt). Object changes each round:
-    - 1 star  → shoe / old boot
-    - 2 stars → cardboard box
-    - 3 stars → cooking pot / saucepan
-    - 4 stars → bongo / small hand drum
-    - 5 stars → proper drum (same as computer bear)
-    Goal: keep the drum. Losing it is funny, not discouraging.
-
-  STREAK MECHANIC
-    Track consecutive 5-star rounds. Show milestone callouts, e.g.:
-    - 3 in a row  → "Drum Protector!"
-    - 5 in a row  → "Rhythm Machine!"
-    - 10 in a row → "Bear Whisperer!"
-    - 15 in a row → "Absolutely Unstoppable!"
-    Reset streak on any round that is not 5 stars.
-
-  TWO-BEAR LAYOUT
-    Computer bear: existing bear column, always has drum, plays perfectly.
-    User bear: second bear column alongside or stacked. Suggested approach:
-    two smaller bears side by side on desktop/iPad; stacked on smaller screens.
-    User bear reacts expressively — confident with drum, game-but-embarrassed
-    with shoe, confused by pillow etc.
-    DO NOT attempt duet mode on iPhone portrait — already blocked by overlay.
-
-  BAR LIMIT
-    Duet mode locked to maximum 2 bars (enforce in UI as with time sig
-    restrictions per level). Keeps the rhythm short enough to hold in memory
-    and avoids scroll complexity.
-
-  BEAR SVG NAMING CONVENTION
-    New bear assets follow the pattern:
-      bear_{state}_{object}
-    Format: {computer|user}_bear_{item}_{position}
-    When no item: {computer|user}_bear_just_bear
-    Items: drum, box, fish, shoe, saucepan, bongo, etc.
-    Example: user_bear_drum_left_stick, user_bear_fish_right_stick
-    This allows the code to construct asset names dynamically.
-    All new SVGs should share the same viewBox dimensions and staff-line
-    anchor point as the existing bear assets.
 
 ─────────────────────────────────────────────────────────────────────────────
 MODE SCAFFOLD
@@ -286,7 +217,8 @@ MODE SCAFFOLD
   goHome(): stops playback, returns to start screen
   Settings cog: visible in Practise only
   Home button: top right of countBar, visible in all active modes
-  Play and Perform are placeholders — built out in future sessions.
+  Play mode: free-play sandbox (radio + two bears with items). See PLAY MODE section.
+  Perform mode: placeholder — built out in future sessions.
 
 ─────────────────────────────────────────────────────────────────────────────
 KNOWN REMAINING ISSUES / FUTURE WORK
@@ -700,6 +632,174 @@ HOW TO CONTINUE DEVELOPMENT
     text-transform:uppercase;
   }
   .mode-placeholder span{font-size:2.5rem;}
+  /* ── Play mode ── */
+  #playScreen{
+    display:flex;flex-direction:column;
+    overflow:hidden;
+  }
+
+  /* Radio */
+  #playRadio{
+    flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+    padding:10px 0 6px;
+  }
+  #radioBody{
+    display:flex;align-items:center;
+    gap:10px;
+    background:#2a1a0e;
+    border:2.5px solid #6b3d1e;
+    border-radius:14px;
+    padding:8px 14px;
+    box-shadow:0 3px 14px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+  #radioSpeaker{
+    display:grid;grid-template-columns:repeat(3,8px);grid-template-rows:repeat(3,8px);
+    gap:4px;
+  }
+  .speaker-hole{
+    width:8px;height:8px;border-radius:50%;
+    background:#0d0905;
+    box-shadow:inset 0 1px 2px rgba(0,0,0,0.8);
+  }
+  #radioDisplay{
+    background:#0d1a0f;
+    border:1.5px solid #1a3d1a;
+    border-radius:6px;
+    padding:4px 12px;
+    min-width:100px;
+    text-align:center;
+    box-shadow:inset 0 2px 6px rgba(0,0,0,0.5);
+  }
+  #radioTrackLabel{
+    font-family:'Courier New',monospace;
+    font-size:0.78rem;
+    font-weight:700;
+    color:#4dff88;
+    letter-spacing:0.08em;
+    text-shadow:0 0 6px rgba(77,255,136,0.6);
+  }
+  #radioTrackLabel.off{
+    color:#2a5a3a;
+    text-shadow:none;
+  }
+  #radioControls{
+    display:flex;align-items:center;gap:10px;
+  }
+  #radioPowerBtn{
+    width:34px;height:34px;border-radius:50%;
+    border:2px solid #8b4513;
+    background:radial-gradient(circle at 40% 35%, #c0392b, #7b1a10);
+    color:#ffcccc;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    box-shadow:0 2px 6px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
+    transition:transform 0.08s, box-shadow 0.08s;
+    flex-shrink:0;
+  }
+  #radioPowerBtn:active{transform:scale(0.91);box-shadow:0 1px 3px rgba(0,0,0,0.5);}
+  #radioPowerBtn.on{
+    background:radial-gradient(circle at 40% 35%, #e74c3c, #c0392b);
+    box-shadow:0 2px 8px rgba(231,76,60,0.5), inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+  #radioDial{
+    width:38px;height:38px;border-radius:50%;
+    background:radial-gradient(circle at 38% 32%, #8b6914, #4a3608);
+    border:2px solid #6b4f10;
+    position:relative;
+    cursor:pointer;
+    box-shadow:0 2px 6px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,220,80,0.2);
+    transition:transform 0.2s ease;
+    flex-shrink:0;
+  }
+  #radioDial:active{filter:brightness(1.15);}
+  #radioDialMark{
+    position:absolute;
+    width:3px;height:10px;
+    background:#ffd700;
+    border-radius:2px;
+    top:4px;left:50%;
+    box-shadow:0 0 4px rgba(255,215,0,0.6);
+    transform:translateX(-50%);
+    transform-origin:1.5px 15px;
+  }
+
+  /* Bear zone */
+  #playBearZone{
+    flex:1;min-height:0;
+    display:flex;flex-direction:row;
+    align-items:stretch;
+  }
+  .play-pad{
+    flex:1;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+    user-select:none;
+    transition:background 0.08s;
+    position:relative;
+  }
+  .play-pad:active{background:rgba(255,250,239,0.05);}
+  .play-pad-hint{
+    font-family:"Trebuchet MS",Verdana,sans-serif;
+    font-size:0.7rem;font-weight:700;
+    letter-spacing:0.15em;
+    color:rgba(255,250,239,0.18);
+    text-transform:uppercase;
+    pointer-events:none;
+    user-select:none;
+  }
+  #playBearsCenter{
+    flex-shrink:0;
+    display:flex;flex-direction:row;
+    align-items:flex-end;
+    justify-content:center;
+    gap:32px;
+    padding:0 8px 12px;
+  }
+  .play-bear-col{
+    display:flex;flex-direction:column;
+    align-items:center;
+    gap:6px;
+  }
+  .play-bear-label{
+    font-family:"Trebuchet MS",Verdana,sans-serif;
+    font-size:0.7rem;font-weight:700;
+    letter-spacing:0.1em;text-transform:uppercase;
+    color:rgba(255,250,239,0.35);
+  }
+  .play-bear-stage{
+    position:relative;
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+    user-select:none;
+  }
+  .play-bear-states{
+    position:relative;width:100%;height:100%;
+  }
+  .play-bear-state{
+    position:absolute;top:0;left:0;width:100%;height:100%;
+    opacity:0;transition:none;
+  }
+  .play-bear-state img{
+    width:100%;height:100%;object-fit:contain;
+    transform:scale(0.7419);transform-origin:top center;
+  }
+  .play-bear-state.active{opacity:1;}
+  .play-item-label{
+    font-family:"Trebuchet MS",Verdana,sans-serif;
+    font-size:0.72rem;font-weight:700;
+    letter-spacing:0.06em;text-transform:uppercase;
+    color:rgba(255,250,239,0.5);
+    background:rgba(255,250,239,0.07);
+    padding:3px 10px;border-radius:20px;
+    transition:color 0.25s, background 0.25s;
+  }
+  .play-item-label.changed{
+    color:#E9C84D;
+    background:rgba(233,200,77,0.15);
+  }
+
 </style>
 </head>
 <body>
@@ -754,9 +854,72 @@ HOW TO CONTINUE DEVELOPMENT
     <div class="side-pad" id="rightPad"></div>
   </div>
 
-  <!-- Play mode placeholder -->
-  <div id="playScreen" style="display:none;flex:1;flex-direction:column;">
-    <div class="mode-placeholder"><span>🐻</span>Play Mode — Coming Soon</div>
+  <!-- Play mode screen -->
+  <div id="playScreen" style="display:none;flex:1;flex-direction:column;min-height:0;">
+
+    <!-- Radio -->
+    <div id="playRadio">
+      <div id="radioBody">
+        <div id="radioSpeaker">
+          <div class="speaker-hole"></div><div class="speaker-hole"></div><div class="speaker-hole"></div>
+          <div class="speaker-hole"></div><div class="speaker-hole"></div><div class="speaker-hole"></div>
+          <div class="speaker-hole"></div><div class="speaker-hole"></div><div class="speaker-hole"></div>
+        </div>
+        <div id="radioDisplay">
+          <span id="radioTrackLabel">Off</span>
+        </div>
+        <div id="radioControls">
+          <button id="radioPowerBtn" onclick="toggleRadio()" title="Power">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+              <path d="M12 2v6M6.3 5.3A8 8 0 1 0 17.7 5.3"/>
+            </svg>
+          </button>
+          <div id="radioDial" onclick="cycleRadioTrack()" title="Change track">
+            <div id="radioDialMark"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bears + pads -->
+    <div id="playBearZone">
+      <div class="play-pad" id="playLeftPad"
+        ontouchstart="event.preventDefault();hitPlayBear('computer');"
+        onmousedown="hitPlayBear('computer');">
+        <div class="play-pad-hint">TAP</div>
+      </div>
+
+      <div id="playBearsCenter">
+        <!-- Computer bear -->
+        <div class="play-bear-col">
+          <div class="play-bear-label">Computer</div>
+          <div class="play-bear-stage" id="playComputerBearStage"
+            ontouchstart="event.preventDefault();cyclePlayBearItem('computer');"
+            onmousedown="cyclePlayBearItem('computer');">
+            <div class="play-bear-states" id="playComputerBearStates"></div>
+          </div>
+          <div class="play-item-label" id="playComputerItemLabel">drum</div>
+        </div>
+
+        <!-- User bear -->
+        <div class="play-bear-col">
+          <div class="play-bear-label">You</div>
+          <div class="play-bear-stage" id="playUserBearStage"
+            ontouchstart="event.preventDefault();cyclePlayBearItem('user');"
+            onmousedown="cyclePlayBearItem('user');">
+            <div class="play-bear-states" id="playUserBearStates"></div>
+          </div>
+          <div class="play-item-label" id="playUserItemLabel">drum</div>
+        </div>
+      </div>
+
+      <div class="play-pad" id="playRightPad"
+        ontouchstart="event.preventDefault();hitPlayBear('user');"
+        onmousedown="hitPlayBear('user');">
+        <div class="play-pad-hint">TAP</div>
+      </div>
+    </div>
+
   </div>
 
   <!-- Perform mode placeholder -->
@@ -829,6 +992,38 @@ const SVGS = {
   "user_bear_drum_motion": "assets/svg/bear/user_bear_drum_motion.svg",
   "user_bear_drum_left_stick": "assets/svg/bear/user_bear_drum_left_stick.svg",
   "user_bear_drum_right_stick": "assets/svg/bear/user_bear_drum_right_stick.svg",
+  "computer_bear_box_ready": "assets/svg/bear/computer_bear_box_ready.svg",
+  "computer_bear_box_motion": "assets/svg/bear/computer_bear_box_motion.svg",
+  "computer_bear_box_left_stick": "assets/svg/bear/computer_bear_box_left_stick.svg",
+  "computer_bear_box_right_stick": "assets/svg/bear/computer_bear_box_right_stick.svg",
+  "computer_bear_bin_ready": "assets/svg/bear/computer_bear_bin_ready.svg",
+  "computer_bear_bin_motion": "assets/svg/bear/computer_bear_bin_motion.svg",
+  "computer_bear_bin_left_stick": "assets/svg/bear/computer_bear_bin_left_stick.svg",
+  "computer_bear_bin_right_stick": "assets/svg/bear/computer_bear_bin_right_stick.svg",
+  "computer_bear_ball_ready": "assets/svg/bear/computer_bear_ball_ready.svg",
+  "computer_bear_ball_motion": "assets/svg/bear/computer_bear_ball_motion.svg",
+  "computer_bear_ball_left_stick": "assets/svg/bear/computer_bear_ball_left_stick.svg",
+  "computer_bear_ball_right_stick": "assets/svg/bear/computer_bear_ball_right_stick.svg",
+  "computer_bear_fish_ready": "assets/svg/bear/computer_bear_fish_ready.svg",
+  "computer_bear_fish_motion": "assets/svg/bear/computer_bear_fish_motion.svg",
+  "computer_bear_fish_left_stick": "assets/svg/bear/computer_bear_fish_left_stick.svg",
+  "computer_bear_fish_right_stick": "assets/svg/bear/computer_bear_fish_right_stick.svg",
+  "user_bear_box_ready": "assets/svg/bear/user_bear_box_ready.svg",
+  "user_bear_box_motion": "assets/svg/bear/user_bear_box_motion.svg",
+  "user_bear_box_left_stick": "assets/svg/bear/user_bear_box_left_stick.svg",
+  "user_bear_box_right_stick": "assets/svg/bear/user_bear_box_right_stick.svg",
+  "user_bear_bin_ready": "assets/svg/bear/user_bear_bin_ready.svg",
+  "user_bear_bin_motion": "assets/svg/bear/user_bear_bin_motion.svg",
+  "user_bear_bin_left_stick": "assets/svg/bear/user_bear_bin_left_stick.svg",
+  "user_bear_bin_right_stick": "assets/svg/bear/user_bear_bin_right_stick.svg",
+  "user_bear_ball_ready": "assets/svg/bear/user_bear_ball_ready.svg",
+  "user_bear_ball_motion": "assets/svg/bear/user_bear_ball_motion.svg",
+  "user_bear_ball_left_stick": "assets/svg/bear/user_bear_ball_left_stick.svg",
+  "user_bear_ball_right_stick": "assets/svg/bear/user_bear_ball_right_stick.svg",
+  "user_bear_fish_ready": "assets/svg/bear/user_bear_fish_ready.svg",
+  "user_bear_fish_motion": "assets/svg/bear/user_bear_fish_motion.svg",
+  "user_bear_fish_left_stick": "assets/svg/bear/user_bear_fish_left_stick.svg",
+  "user_bear_fish_right_stick": "assets/svg/bear/user_bear_fish_right_stick.svg",
   "count_1_active": "assets/svg/ui/count_1_active.svg",
   "count_1_passive": "assets/svg/ui/count_1_passive.svg",
   "count_2_active": "assets/svg/ui/count_2_active.svg",
@@ -1933,6 +2128,9 @@ function enterMode(mode){
     drawAllBars();
     positionBeatNums();
   }
+  if(mode === 'play'){
+    initPlayMode();
+  }
 }
 
 function goHome(){
@@ -1958,7 +2156,260 @@ window.addEventListener('load',()=>{
 });
 window.addEventListener('resize',()=>{
   if(currentMode==='practise'){ layoutSizes();drawAllBars();positionBeatNums(); }
+  if(currentMode==='play'){ layoutPlayMode(); }
 });
+
+// ═══════════════════════════════════════════════════════════════
+//  PLAY MODE
+// ═══════════════════════════════════════════════════════════════
+
+// Items available per bear. 'drum' uses existing bear SVGs.
+// Future items: just add to this array and provide SVG files.
+const PLAY_ITEMS = ['drum', 'box', 'bin', 'ball', 'fish'];
+
+// Item display names shown in the label
+const PLAY_ITEM_NAMES = {
+  drum: 'Drum', box: 'Box', bin: 'Bin', ball: 'Ball', fish: 'Fish'
+};
+
+// Synthesised placeholder sounds per item (Web Audio — no external files needed).
+// Replace with real WAV loading once files are ready.
+function playItemSound(who, item) {
+  const ac = getAC();
+  const t = ac.currentTime + 0.01;
+  const sounds = {
+    drum: () => {
+      // Same drum sound already in the app
+      const o = trackNode(ac.createOscillator()), g = ac.createGain();
+      o.connect(g); g.connect(ac.destination);
+      o.frequency.setValueAtTime(who === 'computer' ? 180 : 220, t);
+      o.frequency.exponentialRampToValueAtTime(40, t + 0.09);
+      g.gain.setValueAtTime(0.85, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.20);
+      o.start(t); o.stop(t + 0.22);
+      const buf = ac.createBuffer(1, ac.sampleRate * 0.05, ac.sampleRate);
+      const d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      const s = trackNode(ac.createBufferSource()), ng = ac.createGain();
+      s.buffer = buf; s.connect(ng); ng.connect(ac.destination);
+      ng.gain.setValueAtTime(0.25, t); ng.gain.exponentialRampToValueAtTime(0.001, t + 0.05); s.start(t);
+    },
+    box: () => {
+      // Cardboard thud — low thump + short noise burst
+      const o = trackNode(ac.createOscillator()), g = ac.createGain();
+      o.type = 'sine'; o.connect(g); g.connect(ac.destination);
+      o.frequency.setValueAtTime(90, t); o.frequency.exponentialRampToValueAtTime(55, t + 0.06);
+      g.gain.setValueAtTime(0.7, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+      o.start(t); o.stop(t + 0.2);
+      const buf = ac.createBuffer(1, ac.sampleRate * 0.03, ac.sampleRate);
+      const d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+      const s = trackNode(ac.createBufferSource()), ng = ac.createGain();
+      s.buffer = buf; s.connect(ng); ng.connect(ac.destination);
+      ng.gain.setValueAtTime(0.35, t); ng.gain.exponentialRampToValueAtTime(0.001, t + 0.03); s.start(t);
+    },
+    bin: () => {
+      // Metal bin — higher resonant clang
+      const o = trackNode(ac.createOscillator()), g = ac.createGain();
+      o.type = 'triangle'; o.connect(g); g.connect(ac.destination);
+      o.frequency.setValueAtTime(320, t); o.frequency.exponentialRampToValueAtTime(200, t + 0.25);
+      g.gain.setValueAtTime(0.6, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+      o.start(t); o.stop(t + 0.38);
+      // Second partial for metallic texture
+      const o2 = trackNode(ac.createOscillator()), g2 = ac.createGain();
+      o2.type = 'sine'; o2.connect(g2); g2.connect(ac.destination);
+      o2.frequency.setValueAtTime(780, t);
+      g2.gain.setValueAtTime(0.2, t); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+      o2.start(t); o2.stop(t + 0.18);
+    },
+    ball: () => {
+      // Bouncy ball — quick pop with pitch drop
+      const o = trackNode(ac.createOscillator()), g = ac.createGain();
+      o.type = 'sine'; o.connect(g); g.connect(ac.destination);
+      o.frequency.setValueAtTime(500, t); o.frequency.exponentialRampToValueAtTime(120, t + 0.07);
+      g.gain.setValueAtTime(0.65, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+      o.start(t); o.stop(t + 0.14);
+    },
+    fish: () => {
+      // Wet slap — noise + low thud, slightly comic
+      const buf = ac.createBuffer(1, ac.sampleRate * 0.04, ac.sampleRate);
+      const d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 0.6);
+      const s = trackNode(ac.createBufferSource()), ng = ac.createGain();
+      s.buffer = buf; s.connect(ng); ng.connect(ac.destination);
+      ng.gain.setValueAtTime(0.55, t); ng.gain.exponentialRampToValueAtTime(0.001, t + 0.06); s.start(t);
+      const o = trackNode(ac.createOscillator()), g = ac.createGain();
+      o.type = 'sine'; o.connect(g); g.connect(ac.destination);
+      o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(70, t + 0.08);
+      g.gain.setValueAtTime(0.45, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+      o.start(t); o.stop(t + 0.14);
+    }
+  };
+  (sounds[item] || sounds.drum)();
+}
+
+// State for the two play-mode bears
+const PB = {
+  computer: { item: 'drum', stickSide: 0 },
+  user:     { item: 'drum', stickSide: 0 }
+};
+
+// Build the HTML image elements for a play-mode bear
+function buildPlayBearImages(who) {
+  const container = document.getElementById(`play${who.charAt(0).toUpperCase() + who.slice(1)}BearStates`);
+  if (!container) return;
+  container.innerHTML = '';
+  const item = PB[who].item;
+  const prefix = `${who}_bear_${item}`;
+  const states = [
+    { key: `${prefix}_ready`,      id: `play_${who}_ready`      },
+    { key: `${prefix}_motion`,     id: `play_${who}_motion`     },
+    { key: `${prefix}_left_stick`, id: `play_${who}_leftstick`  },
+    { key: `${prefix}_right_stick`,id: `play_${who}_rightstick` },
+  ];
+  states.forEach((st, i) => {
+    const div = document.createElement('div');
+    div.className = 'play-bear-state' + (i === 0 ? ' active' : '');
+    div.id = st.id;
+    const img = document.createElement('img');
+    img.src = SVGS[st.key] || '';
+    img.alt = st.id;
+    div.appendChild(img);
+    container.appendChild(div);
+  });
+}
+
+function setPlayBear(who, name) {
+  const prefix = `play_${who}_`;
+  ['ready','motion','leftstick','rightstick'].forEach(s => {
+    const el = document.getElementById(prefix + s);
+    if (el) el.classList.remove('active');
+  });
+  const el = document.getElementById(prefix + name);
+  if (el) el.classList.add('active');
+}
+
+function hitPlayBear(who) {
+  const state = PB[who];
+  const side = state.stickSide % 2 === 0 ? 'leftstick' : 'rightstick';
+  state.stickSide++;
+  setPlayBear(who, side);
+  playItemSound(who, state.item);
+  setTimeout(() => setPlayBear(who, 'motion'), 110);
+}
+
+function cyclePlayBearItem(who) {
+  const state = PB[who];
+  const idx = PLAY_ITEMS.indexOf(state.item);
+  state.item = PLAY_ITEMS[(idx + 1) % PLAY_ITEMS.length];
+  state.stickSide = 0;
+  buildPlayBearImages(who);
+  setPlayBear(who, 'ready');
+  // Update label with flash
+  const labelId = `play${who.charAt(0).toUpperCase() + who.slice(1)}ItemLabel`;
+  const label = document.getElementById(labelId);
+  if (label) {
+    label.textContent = PLAY_ITEM_NAMES[state.item] || state.item;
+    label.classList.add('changed');
+    setTimeout(() => label.classList.remove('changed'), 600);
+  }
+  // Rotate dial mark visually
+  const dialMark = document.getElementById('radioDialMark');
+  if (dialMark) {
+    const deg = PLAY_ITEMS.indexOf(state.item) * (360 / PLAY_ITEMS.length);
+    dialMark.style.transform = `translateX(-50%) rotate(${deg}deg)`;
+  }
+}
+
+function layoutPlayMode() {
+  const app = document.getElementById('app');
+  const countBar = document.getElementById('countBar');
+  const playScreen = document.getElementById('playScreen');
+  if (!playScreen || playScreen.style.display === 'none') return;
+
+  const totalH = app.clientHeight;
+  const countH = countBar.offsetHeight;
+  const radioEl = document.getElementById('playRadio');
+  const radioH = radioEl ? radioEl.offsetHeight : 70;
+  const available = totalH - countH - radioH - 20;
+
+  const bearSize = Math.min(available * 0.88, app.clientWidth * 0.30);
+
+  ['playComputerBearStage', 'playUserBearStage'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.style.width = bearSize + 'px'; el.style.height = bearSize + 'px'; }
+  });
+}
+
+// ── RADIO ───────────────────────────────────────────────────────
+const RADIO_TRACKS = [
+  { name: 'No track loaded' }
+  // Add more tracks here as: { name: 'Track Name', src: 'assets/audio/track1.mp3' }
+];
+
+let radioOn = false;
+let radioTrackIdx = 0;
+let radioAudioEl = null;
+let _dialAngle = 0;
+
+function toggleRadio() {
+  radioOn = !radioOn;
+  document.getElementById('radioPowerBtn').classList.toggle('on', radioOn);
+  updateRadioDisplay();
+  if (radioAudioEl) {
+    if (radioOn) { radioAudioEl.play().catch(() => {}); }
+    else { radioAudioEl.pause(); }
+  }
+}
+
+function cycleRadioTrack() {
+  if (RADIO_TRACKS.length <= 1) return;
+  radioTrackIdx = (radioTrackIdx + 1) % RADIO_TRACKS.length;
+  // Rotate dial
+  _dialAngle += 360 / RADIO_TRACKS.length;
+  const mark = document.getElementById('radioDialMark');
+  if (mark) mark.style.transform = `translateX(-50%) rotate(${_dialAngle}deg)`;
+  updateRadioDisplay();
+  loadRadioTrack();
+}
+
+function loadRadioTrack() {
+  const track = RADIO_TRACKS[radioTrackIdx];
+  if (!track.src) { if (radioAudioEl) { radioAudioEl.pause(); radioAudioEl = null; } return; }
+  if (radioAudioEl) radioAudioEl.pause();
+  radioAudioEl = new Audio(track.src);
+  radioAudioEl.loop = true;
+  if (radioOn) radioAudioEl.play().catch(() => {});
+}
+
+function updateRadioDisplay() {
+  const label = document.getElementById('radioTrackLabel');
+  if (!label) return;
+  if (!radioOn) {
+    label.textContent = 'Off';
+    label.className = 'off';
+  } else {
+    const track = RADIO_TRACKS[radioTrackIdx];
+    label.textContent = track.name.toUpperCase();
+    label.className = '';
+  }
+}
+
+// ── PLAY MODE INIT ──────────────────────────────────────────────
+function initPlayMode() {
+  // Build bear image sets
+  buildPlayBearImages('computer');
+  buildPlayBearImages('user');
+  // Update labels
+  ['computer', 'user'].forEach(who => {
+    const labelId = `play${who.charAt(0).toUpperCase() + who.slice(1)}ItemLabel`;
+    const label = document.getElementById(labelId);
+    if (label) label.textContent = PLAY_ITEM_NAMES[PB[who].item] || PB[who].item;
+  });
+  // Set initial bear state
+  setPlayBear('computer', 'ready');
+  setPlayBear('user', 'ready');
+  // Size bears
+  layoutPlayMode();
+  // Radio display
+  updateRadioDisplay();
+}
 
 </script>
 </body>
