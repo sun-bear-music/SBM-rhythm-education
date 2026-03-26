@@ -645,84 +645,66 @@ HOW TO CONTINUE DEVELOPMENT
     padding:10px 0 6px;
   }
   #radioBody{
-    display:flex;align-items:center;
-    gap:10px;
-    background:#2a1a0e;
-    border:2.5px solid #6b3d1e;
-    border-radius:14px;
-    padding:8px 14px;
-    box-shadow:0 3px 14px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06);
+    position:relative;
+    display:inline-block;
+    /* Height controlled by the SVG image's natural aspect ratio */
+    height:80px;
   }
-  #radioSpeaker{
-    display:grid;grid-template-columns:repeat(3,8px);grid-template-rows:repeat(3,8px);
-    gap:4px;
+  #radioImg{
+    height:100%;
+    width:auto;
+    display:block;
+    pointer-events:none;
+    user-select:none;
   }
-  .speaker-hole{
-    width:8px;height:8px;border-radius:50%;
-    background:#0d0905;
-    box-shadow:inset 0 1px 2px rgba(0,0,0,0.8);
-  }
+  /* Track name overlay — positioned over the display screen area of the SVG.
+     Adjust left/top/width/height % values to match your SVG layout. */
   #radioDisplay{
-    background:#0d1a0f;
-    border:1.5px solid #1a3d1a;
-    border-radius:6px;
-    padding:4px 12px;
-    min-width:100px;
-    text-align:center;
-    box-shadow:inset 0 2px 6px rgba(0,0,0,0.5);
+    position:absolute;
+    left:38%;top:22%;width:28%;height:36%;
+    display:flex;align-items:center;justify-content:center;
+    pointer-events:none;
   }
   #radioTrackLabel{
     font-family:'Courier New',monospace;
-    font-size:0.78rem;
+    font-size:0.62rem;
     font-weight:700;
     color:#4dff88;
-    letter-spacing:0.08em;
-    text-shadow:0 0 6px rgba(77,255,136,0.6);
+    letter-spacing:0.06em;
+    text-shadow:0 0 6px rgba(77,255,136,0.7);
+    text-align:center;
+    line-height:1.2;
   }
   #radioTrackLabel.off{
     color:#2a5a3a;
     text-shadow:none;
   }
-  #radioControls{
-    display:flex;align-items:center;gap:10px;
-  }
+  /* Power button tap target — invisible, sits over the button area of the SVG.
+     Adjust left/top/width/height % to match your SVG. */
   #radioPowerBtn{
-    width:34px;height:34px;border-radius:50%;
-    border:2px solid #8b4513;
-    background:radial-gradient(circle at 40% 35%, #c0392b, #7b1a10);
-    color:#ffcccc;
-    display:flex;align-items:center;justify-content:center;
-    cursor:pointer;
-    box-shadow:0 2px 6px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
-    transition:transform 0.08s, box-shadow 0.08s;
-    flex-shrink:0;
-  }
-  #radioPowerBtn:active{transform:scale(0.91);box-shadow:0 1px 3px rgba(0,0,0,0.5);}
-  #radioPowerBtn.on{
-    background:radial-gradient(circle at 40% 35%, #e74c3c, #c0392b);
-    box-shadow:0 2px 8px rgba(231,76,60,0.5), inset 0 1px 0 rgba(255,255,255,0.2);
-  }
-  #radioDial{
-    width:38px;height:38px;border-radius:50%;
-    background:radial-gradient(circle at 38% 32%, #8b6914, #4a3608);
-    border:2px solid #6b4f10;
-    position:relative;
-    cursor:pointer;
-    box-shadow:0 2px 6px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,220,80,0.2);
-    transition:transform 0.2s ease;
-    flex-shrink:0;
-  }
-  #radioDial:active{filter:brightness(1.15);}
-  #radioDialMark{
     position:absolute;
-    width:3px;height:10px;
-    background:#ffd700;
-    border-radius:2px;
-    top:4px;left:50%;
-    box-shadow:0 0 4px rgba(255,215,0,0.6);
-    transform:translateX(-50%);
-    transform-origin:1.5px 15px;
+    left:6%;top:25%;width:16%;height:50%;
+    background:transparent;
+    border:none;
+    cursor:pointer;
+    border-radius:50%;
+    -webkit-tap-highlight-color:transparent;
+    transition:opacity 0.08s;
   }
+  #radioPowerBtn:active{opacity:0.6;}
+  /* Dial tap target — invisible circle over the dial area of the SVG.
+     Adjust left/top/width/height % to match your SVG. */
+  #radioDial{
+    position:absolute;
+    left:76%;top:15%;width:20%;height:70%;
+    border-radius:50%;
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+    transition:transform 0.2s ease;
+  }
+  #radioDial:active{opacity:0.7;}
+  /* Dial mark — hidden since the real dial is in the SVG image */
+  #radioDialMark{ display:none; }
 
   /* Bear zone */
   #playBearZone{
@@ -860,23 +842,15 @@ HOW TO CONTINUE DEVELOPMENT
     <!-- Radio -->
     <div id="playRadio">
       <div id="radioBody">
-        <div id="radioSpeaker">
-          <div class="speaker-hole"></div><div class="speaker-hole"></div><div class="speaker-hole"></div>
-          <div class="speaker-hole"></div><div class="speaker-hole"></div><div class="speaker-hole"></div>
-          <div class="speaker-hole"></div><div class="speaker-hole"></div><div class="speaker-hole"></div>
+        <img id="radioImg" src="assets/svg/ui/radio.svg" alt="Radio">
+        <!-- Invisible tap targets overlaid on the SVG — adjust % positions to match your SVG layout -->
+        <button id="radioPowerBtn" onclick="toggleRadio()" title="Power on/off"></button>
+        <div id="radioDial" onclick="cycleRadioTrack()" title="Change track">
+          <div id="radioDialMark"></div>
         </div>
+        <!-- Track name display floated over the SVG display area -->
         <div id="radioDisplay">
-          <span id="radioTrackLabel">Off</span>
-        </div>
-        <div id="radioControls">
-          <button id="radioPowerBtn" onclick="toggleRadio()" title="Power">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-              <path d="M12 2v6M6.3 5.3A8 8 0 1 0 17.7 5.3"/>
-            </svg>
-          </button>
-          <div id="radioDial" onclick="cycleRadioTrack()" title="Change track">
-            <div id="radioDialMark"></div>
-          </div>
+          <span id="radioTrackLabel" class="off">Off</span>
         </div>
       </div>
     </div>
@@ -1041,6 +1015,7 @@ const SVGS = {
   "icon_metronome": "assets/svg/ui/icon_metronome.svg",
   "icon_note_highlight": "assets/svg/ui/icon_note_highlight.svg",
   "icon_tap": "assets/svg/ui/icon_tap.svg",
+  "radio": "assets/svg/ui/radio.svg",
   "repeat_sign": "assets/svg/barlines/repeat_sign.svg",
   "sa-ah": "assets/svg/notes/sa-ah.svg",
   "sa-ah-ah-ah": "assets/svg/notes/sa-ah-ah-ah.svg",
