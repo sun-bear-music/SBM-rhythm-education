@@ -2144,11 +2144,11 @@ window.addEventListener('resize',()=>{
 
 // Items available per bear. 'drum' uses existing bear SVGs.
 // Future items: just add to this array and provide SVG files.
-const PLAY_ITEMS = ['drum', 'box', 'bin', 'ball', 'fish'];
+const PLAY_ITEMS = ['drum', 'box', 'bin', 'ball', 'fish', 'donuts'];
 
 // Item display names shown in the label
 const PLAY_ITEM_NAMES = {
-  drum: 'Drum', box: 'Box', bin: 'Bin', ball: 'Ball', fish: 'Fish'
+  drum: 'Drum', box: 'Box', bin: 'Bin', ball: 'Ball', fish: 'Fish', donuts: 'Donuts'
 };
 
 // Synthesised placeholder sounds per item (Web Audio — no external files needed).
@@ -2168,6 +2168,11 @@ const ITEM_SOUND_POOLS = {
     'assets/sounds/fish_sound_4.wav',
     'assets/sounds/fish_sound_5.wav',
   ],
+  donuts: [
+    'assets/sounds/donut_sound_1.wav',
+    'assets/sounds/donut_sound_2.wav', 
+    'assets/sounds/donut_sound_3.wav',
+  ]
 };
 
 // Pre-decoded AudioBuffers keyed by file path
