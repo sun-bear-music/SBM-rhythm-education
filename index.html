@@ -189,7 +189,7 @@ PLAY MODE — FREE-PLAY SANDBOX
 
   INSTRUMENTS (PLAY_ITEMS array)
     Current: drum, box, bin, ball, fish
-    Drum uses synthesis (playDrum). Others use WAV files from assets/audio/:
+    Drum uses synthesis (playDrum). Others use WAV files from assets/sounds/:
       box_sound.wav, bin_sound.wav, ball_sound.wav
       fish_sound_1.wav … fish_sound_5.wav  (random pick per hit)
     Add more sounds: extend ITEM_SOUND_POOLS with additional paths.
@@ -2158,15 +2158,15 @@ const PLAY_ITEM_NAMES = {
 // Drum falls back to synthesis (reuses the existing playDrum function).
 // Add more paths to any array to grow the pool — pick is always random.
 const ITEM_SOUND_POOLS = {
-  box:  ['assets/audio/box_sound.wav'],
-  bin:  ['assets/audio/bin_sound.wav'],
-  ball: ['assets/audio/ball_sound.wav'],
+  box:  ['assets/sounds/box_sound.wav'],
+  bin:  ['assets/sounds/bin_sound.wav'],
+  ball: ['assets/sounds/ball_sound.wav'],
   fish: [
-    'assets/audio/fish_sound_1.wav',
-    'assets/audio/fish_sound_2.wav',
-    'assets/audio/fish_sound_3.wav',
-    'assets/audio/fish_sound_4.wav',
-    'assets/audio/fish_sound_5.wav',
+    'assets/sounds/fish_sound_1.wav',
+    'assets/sounds/fish_sound_2.wav',
+    'assets/sounds/fish_sound_3.wav',
+    'assets/sounds/fish_sound_4.wav',
+    'assets/sounds/fish_sound_5.wav',
   ],
 };
 
@@ -2344,7 +2344,7 @@ function layoutPlayMode() {
 // ── RADIO ───────────────────────────────────────────────────────
 const RADIO_TRACKS = [
   { name: 'No track loaded' }
-  // Add more tracks here as: { name: 'Track Name', src: 'assets/audio/track1.mp3' }
+  // Add more tracks here as: { name: 'Track Name', src: 'assets/sounds/track1.mp3' }
 ];
 
 let radioOn = false;
