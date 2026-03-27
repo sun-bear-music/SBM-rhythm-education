@@ -2207,7 +2207,8 @@ function playItemSound(who, item) {
     if (buf) {
       const s = trackNode(ac.createBufferSource()), g = ac.createGain();
       s.buffer = buf; s.connect(g); g.connect(ac.destination);
-      g.gain.setValueAtTime(0.85, t);
+      const gainVal = (item === 'box' || item === 'bin') ? 1.0 : 0.85;
+      g.gain.setValueAtTime(gainVal, t);
       s.start(t);
       return;
     }
