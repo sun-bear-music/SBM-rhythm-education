@@ -652,7 +652,7 @@ HOW TO CONTINUE DEVELOPMENT
     position:relative;
     display:inline-block;
     /* Height controlled by the SVG image's natural aspect ratio */
-    height:80px;
+    height:160px;
   }
   #radioImg{
     height:100%;
@@ -671,7 +671,7 @@ HOW TO CONTINUE DEVELOPMENT
   }
   #radioTrackLabel{
     font-family:'Courier New',monospace;
-    font-size:0.62rem;
+    font-size:1.24rem;
     font-weight:700;
     color:#4dff88;
     letter-spacing:0.06em;
@@ -853,7 +853,7 @@ HOW TO CONTINUE DEVELOPMENT
           <div id="radioDialMark"></div>
         </div>
         <!-- Track name display floated over the SVG display area -->
-        <div id="radioDisplay">
+        <div id="radioDisplay" style="display:none;">
           <span id="radioTrackLabel" class="off">Off</span>
         </div>
       </div>
@@ -864,37 +864,31 @@ HOW TO CONTINUE DEVELOPMENT
       <div class="play-pad" id="playLeftPad"
         ontouchstart="event.preventDefault();hitPlayBear('computer');"
         onmousedown="hitPlayBear('computer');">
-        <div class="play-pad-hint">TAP</div>
       </div>
 
       <div id="playBearsCenter">
         <!-- Computer bear -->
         <div class="play-bear-col">
-          <div class="play-bear-label">Computer</div>
           <div class="play-bear-stage" id="playComputerBearStage"
             ontouchstart="event.preventDefault();cyclePlayBearItem('computer');"
             onmousedown="cyclePlayBearItem('computer');">
             <div class="play-bear-states" id="playComputerBearStates"></div>
           </div>
-          <div class="play-item-label" id="playComputerItemLabel">drum</div>
         </div>
 
         <!-- User bear -->
         <div class="play-bear-col">
-          <div class="play-bear-label">You</div>
           <div class="play-bear-stage" id="playUserBearStage"
             ontouchstart="event.preventDefault();cyclePlayBearItem('user');"
             onmousedown="cyclePlayBearItem('user');">
             <div class="play-bear-states" id="playUserBearStates"></div>
           </div>
-          <div class="play-item-label" id="playUserItemLabel">drum</div>
         </div>
       </div>
 
       <div class="play-pad" id="playRightPad"
         ontouchstart="event.preventDefault();hitPlayBear('user');"
         onmousedown="hitPlayBear('user');">
-        <div class="play-pad-hint">TAP</div>
       </div>
     </div>
 
