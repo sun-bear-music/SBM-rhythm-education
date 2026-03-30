@@ -39,10 +39,14 @@ SVG ASSETS (all embedded as base64)
     triplet        — 3 quaver triplet, 1 beat
     ti-triola      — qu + sq triplet, 1 beat
     triola-ti      — sq triplet + qu, 1 beat
+    ta-ah          — minim (half note), 2 beats
+    sa-ah          — minim rest, 2 beats
     tahm           — dotted crotchet (dotted quarter note), 1.5 beats
     tihm           — dotted quaver (dotted eighth note), 0.75 beats
     sahm           — dotted crotchet rest, 1.5 beats
     sihm           — dotted quaver rest, 0.75 beats
+    ta-ah-ah-ah    — semibreve (whole note), 4 beats
+    sa-ah-ah-ah    — semibreve rest, 4 beats
 
   BARLINES / CLEF:
     drum_clef                 — percussion clef (two vertical rectangles)
@@ -120,15 +124,17 @@ RHYTHM GENERATION
   - Each component note gets its own gIdx → individual highlighting during playback
   - beatsAvail = bpb() = numerator of time signature; groupings never cross bar lines
 
-  LEVELS (6 total):
-    1: ta, sah
-    2: ta, sah, ti-ti
-    3: ta, sah, ti-ti, ti, si
+  LEVELS (8 total):
+    1: ta-ah-ah-ah, sa-ah-ah-ah, ta-ah, sa-ah
+    2: ta, sah
+    3: ta-ah-ah-ah, sa-ah-ah-ah, ta-ah, sa-ah, ta, sah
+    4: ta, sah, ti-ti
+    5: ta, sah, ti-ti, ti, si
         → groupings unlock automatically: si+ti, ti+si, ti+ta+ti, si+ta+ti, ti+ta+si
-    4: + tika-tika, tika-ti, ti-tika
-    5: + timka, tika, tahm, sahm, tika-ka, seka-ti
+    6: + tika-tika, tika-ti, ti-tika
+    7: + timka, tika, tahm, sahm, tika-ka, seka-ti
         → groupings: si+tika, tika+si, ti+tahm, tahm+ti, sahm+ti, sahm+tika
-    6: + triplet, triola, triola-ti, ti-triola, triola-triola
+    8: + triplet, triola, triola-ti, ti-triola, triola-triola
         → groupings: si+triola, triola+si
 
 ─────────────────────────────────────────────────────────────────────────────
@@ -209,8 +215,15 @@ PLAY MODE — FREE-PLAY SANDBOX
 ─────────────────────────────────────────────────────────────────────────────
 MODE SCAFFOLD
 ─────────────────────────────────────────────────────────────────────────────
-  Three modes: Play, Practise, Perform.
-  currentMode: null (start screen), "play", "practise", "perform"
+  Two modes: Computer partner (default) and Friend (2-player).
+  S.twoPlayer: false = computer partner; true = two human players.
+  In Friend mode:
+    - Left pad → Player 1 (user/box bear, left side)
+    - Right pad → Player 2 (computer bear, right side)
+    - Drum sound auto-disabled; computer bear animates on P2 taps only
+    - Both players get independent dot rows: P1 amber (row 1), P2 coral (row 2)
+    - setBear() suppresses rhythm-driven animation; setBearDirect() used for P2 taps
+  Setting in Settings modal under "Partner": Computer / Friend chips.
   enterMode(mode): shows correct screens, hides others, manages settings visibility
   goHome(): stops playback, returns to start screen
   Settings cog: visible in Practise only
@@ -808,17 +821,7 @@ HOW TO CONTINUE DEVELOPMENT
   <div id="bearZone">
     <div class="side-pad" id="leftPad"></div>
     <div id="bearsCenter">
-      <!-- Computer bear -->
-      <div class="bear-stage" id="bearStage"
-        ontouchstart="event.preventDefault();handlePlayStop();"
-        onmousedown="handlePlayStop();">
-        <div class="bear-state active" id="bearJustBear"><img id="imgBearJustBear" src="" alt="Bear"></div>
-        <div class="bear-state" id="bearDrumReady"><img id="imgBearDrumReady" src="" alt="Bear drum ready"></div>
-        <div class="bear-state" id="bearDrumMotion"><img id="imgBearDrumMotion" src="" alt="Bear drum motion"></div>
-        <div class="bear-state" id="bearLeftStick"><img id="imgBearLeftStick" src="" alt="Bear left stick"></div>
-        <div class="bear-state" id="bearRightStick"><img id="imgBearRightStick" src="" alt="Bear right stick"></div>
-      </div>
-      <!-- User bear (box bear) -->
+      <!-- User bear (box bear) — LEFT, Player 1 -->
       <div class="bear-stage" id="boxBearStage"
         ontouchstart="event.preventDefault();handlePlayStop();"
         onmousedown="handlePlayStop();">
@@ -827,6 +830,16 @@ HOW TO CONTINUE DEVELOPMENT
         <div class="bear-state" id="boxBearDrumMotion"><img id="imgBoxBearDrumMotion" src="" alt="Box bear drum motion"></div>
         <div class="bear-state" id="boxBearLeftStick"><img id="imgBoxBearLeftStick" src="" alt="Box bear left stick"></div>
         <div class="bear-state" id="boxBearRightStick"><img id="imgBoxBearRightStick" src="" alt="Box bear right stick"></div>
+      </div>
+      <!-- Computer bear — RIGHT, Player 2 in 2-player mode -->
+      <div class="bear-stage" id="bearStage"
+        ontouchstart="event.preventDefault();handlePlayStop();"
+        onmousedown="handlePlayStop();">
+        <div class="bear-state active" id="bearJustBear"><img id="imgBearJustBear" src="" alt="Bear"></div>
+        <div class="bear-state" id="bearDrumReady"><img id="imgBearDrumReady" src="" alt="Bear drum ready"></div>
+        <div class="bear-state" id="bearDrumMotion"><img id="imgBearDrumMotion" src="" alt="Bear drum motion"></div>
+        <div class="bear-state" id="bearLeftStick"><img id="imgBearLeftStick" src="" alt="Bear left stick"></div>
+        <div class="bear-state" id="bearRightStick"><img id="imgBearRightStick" src="" alt="Bear right stick"></div>
       </div>
     </div>
     <!-- Count-in overlay — floats over bear zone, hidden except during count-in -->
@@ -932,7 +945,9 @@ HOW TO CONTINUE DEVELOPMENT
         <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Count In <span class="acc-val" id="valCountIn">1 bar</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="form-row"><label>Bars</label><div class="radio-group" id="countInBarsGroup"><div class="radio-chip selected" data-val="1" onclick="setCountInBars(1)">1 bar</div><div class="radio-chip" data-val="2" onclick="setCountInBars(2)">2 bars</div></div></div></div></div></div>
         <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Metronome <span class="acc-val" id="valMetronome">Visual + Sound</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="form-row"><div class="radio-group" id="metronomeGroup"><div class="radio-chip selected" data-val="both" onclick="setMetronome('both')">Visual + Sound</div><div class="radio-chip" data-val="visual" onclick="setMetronome('visual')">Visual only</div><div class="radio-chip" data-val="sound" onclick="setMetronome('sound')">Sound only</div><div class="radio-chip" data-val="none" onclick="setMetronome('none')">None</div></div></div><div class="form-row"><label>Volume</label><input type="range" id="metronomeVol" min="0" max="100" value="60" oninput="updateMetronomeVol(this.value)"><span class="val-badge" id="metronomeVolVal">60%</span></div><div class="form-row"><label>Sound</label><div class="radio-group" id="metronomeSoundGroup"><div class="radio-chip" data-val="Agogo" onclick="setMetronomeSound('Agogo')">Agogo</div><div class="radio-chip" data-val="Bongo" onclick="setMetronomeSound('Bongo')">Bongo</div><div class="radio-chip selected" data-val="Click" onclick="setMetronomeSound('Click')">Click</div><div class="radio-chip" data-val="Shaker" onclick="setMetronomeSound('Shaker')">Shaker</div><div class="radio-chip" data-val="Triangle" onclick="setMetronomeSound('Triangle')">Triangle</div><div class="radio-chip" data-val="Woodblock" onclick="setMetronomeSound('Woodblock')">Woodblock</div></div></div></div></div></div>
         <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Repeats <span class="acc-val" id="valRepeats">x2 total</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="radio-group" id="repeatsGroup"><div class="radio-chip" data-val="0" onclick="setRepeats(0)">No repeat</div><div class="radio-chip selected" data-val="1" onclick="setRepeats(1)">x2 total</div><div class="radio-chip" data-val="3" onclick="setRepeats(3)">x4 total</div><div class="radio-chip" data-val="7" onclick="setRepeats(7)">x8 total</div><div class="radio-chip" data-val="99" onclick="setRepeats(99)">&#8734;</div></div></div></div></div>
+        <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Partner <span class="acc-val" id="valPartner">Computer</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="form-row"><div class="radio-group" id="partnerGroup"><div class="radio-chip selected" data-val="computer" onclick="setPartner('computer')">Computer</div><div class="radio-chip" data-val="friend" onclick="setPartner('friend')">Friend</div></div></div><div class="info-note" id="partnerNote" style="display:none;">In Friend mode, Player 1 taps left · Player 2 taps right. Drum sound is off.</div></div></div></div>
         <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Assistance <span class="acc-val" id="valAssistance">Beat &amp; Bar on</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="form-row"><label>Beat highlight</label><div class="radio-group" id="beatHighlightGroup"><div class="radio-chip selected" data-val="on" onclick="setBeatHighlight('on')">On</div><div class="radio-chip" data-val="off" onclick="setBeatHighlight('off')">Off</div></div></div></div></div></div>
+        <div class="acc-section" id="assistVolSection"><div class="acc-header" onclick="toggleAcc(this)">Drum Volume <span class="acc-val" id="valAssistVol">80%</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="form-row"><label>Volume</label><input type="range" id="assistVolSlider" min="0" max="100" value="80" oninput="updateAssistVol(this.value)"><span class="val-badge" id="assistVolVal">80%</span></div></div></div></div>
 
       </div>
     </div>
@@ -1218,15 +1233,17 @@ const NOTE_DEFS={
 };
 
 const LEVELS=[
-  {num:1,label:'Level 1',desc:'Crotchets',                  pool:['ta','sah']},
-  {num:2,label:'Level 2',desc:'+ 2 quavers',                pool:['ta','sah','ti-ti']},
-  {num:3,label:'Level 3',desc:'+ single quavers',           pool:['ta','sah','ti-ti','ti','si']},
-  {num:4,label:'Level 4',desc:'+ semiquaver groups',        pool:['ta','sah','ti-ti','ti','si','tika-tika','tika-ti','ti-tika']},
-  {num:5,label:'Level 5',desc:'+ dotted & semiquaver pairs',pool:['ta','sah','ti-ti','ti','si','tika-tika','tika-ti','ti-tika','timka','tika','tahm','sahm','tika-ka','seka-ti']},
-  {num:6,label:'Level 6',desc:'+ triplets',                 pool:['ta','sah','ti-ti','ti','si','tika-tika','tika-ti','ti-tika','timka','tika','tahm','sahm','tika-ka','seka-ti','triplet','triola','triola-ti','ti-triola','triola-triola']},
+  {num:1,label:'Level 1',desc:'Long notes',                 pool:['ta-ah-ah-ah','sa-ah-ah-ah','ta-ah','sa-ah']},
+  {num:2,label:'Level 2',desc:'Crotchets',                  pool:['ta','sah']},
+  {num:3,label:'Level 3',desc:'Long & short notes',         pool:['ta-ah-ah-ah','sa-ah-ah-ah','ta-ah','sa-ah','ta','sah']},
+  {num:4,label:'Level 4',desc:'+ 2 quavers',                pool:['ta','sah','ti-ti']},
+  {num:5,label:'Level 5',desc:'+ single quavers',           pool:['ta','sah','ti-ti','ti','si']},
+  {num:6,label:'Level 6',desc:'+ semiquaver groups',        pool:['ta','sah','ti-ti','ti','si','tika-tika','tika-ti','ti-tika']},
+  {num:7,label:'Level 7',desc:'+ dotted & semiquaver pairs',pool:['ta','sah','ti-ti','ti','si','tika-tika','tika-ti','ti-tika','timka','tika','tahm','sahm','tika-ka','seka-ti']},
+  {num:8,label:'Level 8',desc:'+ triplets',                 pool:['ta','sah','ti-ti','ti','si','tika-tika','tika-ti','ti-tika','timka','tika','tahm','sahm','tika-ka','seka-ti','triplet','triola','triola-ti','ti-triola','triola-triola']},
 ];
 
-const S={bars:2,tempo:80,timeSig:'4/4',countInBars:1,metronome:'both',metronomeVol:0.6,repeats:1,assistVol:0.8,assistMode:'duet',level:2,metronomeSound:'Click'};
+const S={bars:2,tempo:80,timeSig:'4/4',countInBars:1,metronome:'both',metronomeVol:0.6,repeats:1,assistVol:0.8,assistMode:'duet',level:2,metronomeSound:'Click',twoPlayer:false};
 let drumEnabled=true;
 let barHighlightEnabled=true;
 let noteHighlightEnabled=true;
@@ -1284,7 +1301,7 @@ function generateBar(beatsAvail){
 }
 function generateNewRhythm(){
   if(PS.playing||PS.paused)handleStop();
-  lastDots=null;prevDots=null;
+  lastDots=null;prevDots=null;lastDots2=null;prevDots2=null;
   currentRhythm=[];
   for(let b=0;b<S.bars;b++)currentRhythm.push(generateBar(bpb()));
   buildTimeline();
@@ -1480,6 +1497,10 @@ function redrawBar(b){
     drawAllBarsOnCanvas(barCanvases[0], barCanvases[0].width / dpr);
     drawDots(prevDots, 0.5, 14);
     drawDots(lastDots, 1.0, 0);
+    if(S.twoPlayer){
+      drawDots(prevDots2, 0.5, 28, true);
+      drawDots(lastDots2, 1.0, 14, true);
+    }
   }
 }
 
@@ -1567,7 +1588,7 @@ function handlePause(){if(!PS.playing)return;PS.playing=false;PS.paused=true;cle
 function handleStop(){
   PS.playing=false;PS.paused=false;PS._inCountIn=false;
   clearAll();PS.highlightGroup=-1;PS.highlightBar=-1;
-  tapLog=[];lastDots=null;prevDots=null;
+  tapLog=[];tapLog2=[];lastDots=null;prevDots=null;lastDots2=null;prevDots2=null;
   setBear('ready');setBoxBear('ready');setActiveBeat(0);
   document.getElementById('beatNums').classList.remove('active');
   const ov=document.getElementById('countInOverlay');if(ov)ov.classList.remove('active');
@@ -1580,6 +1601,7 @@ function resumePlay(){PS.paused=false;PS.playing=true;playRepeat(PS.currentRepea
 function startCountIn(cb){
   PS.playing=true;PS._inCountIn=true;
   _userStickSide=0;
+  _p2StickSide=0;
   const ac=getAC(),bd=bdSec(),B=bpb(),total=B*S.countInBars,st=ac.currentTime+0.05;
   document.getElementById('statusText').textContent='Count in…';
   // Clear count bar — it's for playback only
@@ -1617,6 +1639,7 @@ function playRepeat(ri,st){
   PS.currentRepeat=ri;
   _stickSide=0;
   _userStickSide=0;
+  _p2StickSide=0;
   setBear('drummotion');
   setBoxBear('drummotion');
   document.getElementById('beatNums').classList.add('active');
@@ -1633,7 +1656,7 @@ function playRepeat(ri,st){
     const ms=(st+ev.beatOffset*bd-ac.currentTime)*1000;
     at(()=>{
       if(!PS.playing)return;
-      if(shouldSound(ri)&&drumEnabled&&!ev.isRest)playDrum(ac.currentTime+0.01,S.assistVol);
+      if(shouldSound(ri)&&drumEnabled&&!ev.isRest&&!S.twoPlayer)playDrum(ac.currentTime+0.01,S.assistVol);
       if(ev.isGroupFirst){
         const prevBar=PS.highlightBar;
         PS.highlightGroup=ev.gIdx;PS.highlightBar=ev.barIdx;
@@ -1654,9 +1677,14 @@ function playRepeat(ri,st){
     const prevBar=PS.highlightBar;PS.highlightGroup=-1;PS.highlightBar=-1;
     if(prevBar>=0)redrawBar(prevBar);
     // Score this repeat's taps and draw dots
-    lastDots=scoreTaps();
+    lastDots=scoreTaps(tapLog, false);
+    if(S.twoPlayer) lastDots2=scoreTaps(tapLog2, true);
     drawDots(prevDots, 0.5, 14);
     drawDots(lastDots, 1.0, 0);
+    if(S.twoPlayer){
+      drawDots(prevDots2, 0.5, 28, true);
+      drawDots(lastDots2, 1.0, 14, true);
+    }
     const next=ri+1;
     if(plays!==Infinity&&next>=plays){
       PS.playing=false;PS.paused=false;setBear('ready');setBoxBear('ready');setActiveBeat(0);
@@ -1731,6 +1759,8 @@ function setActiveBeat(n){
 }
 
 function setBear(name){
+  // In 2-player mode the computer bear is driven by Player 2 taps, not the rhythm timeline
+  if(S.twoPlayer && name !== 'ready' && name !== 'justbear') return;
   ['bearJustBear','bearDrumReady','bearDrumMotion','bearLeftStick','bearRightStick'].forEach(id=>document.getElementById(id).classList.remove('active'));
   const m={ready:'bearJustBear',justbear:'bearJustBear',drumready:'bearDrumReady',drummotion:'bearDrumMotion',leftstick:'bearLeftStick',rightstick:'bearRightStick'};
   (document.getElementById(m[name]||'bearJustBear')).classList.add('active');
@@ -1787,7 +1817,7 @@ function updateTempo(v){
 }
 
 // Time signatures allowed per level
-const LEVEL_TIME_SIGS={};
+const LEVEL_TIME_SIGS={1:['4/4','2/4']};
 function enforceTimeSigForLevel(){
   const allowed=LEVEL_TIME_SIGS[S.level]||['4/4','2/4','3/4','5/4'];
   document.querySelectorAll('#timeSigGroup .radio-chip').forEach(el=>{
@@ -1816,6 +1846,22 @@ function setMetronome(v){
 function updateMetronomeVol(v){S.metronomeVol=v/100;document.getElementById('metronomeVolVal').textContent=`${v}%`;}
 function setMetronomeSound(v){S.metronomeSound=v;chips('metronomeSoundGroup',v);}
 function setRepeats(v){S.repeats=parseInt(v);chips('repeatsGroup',v);document.getElementById('valRepeats').textContent={0:'No repeat',1:'\u00d72 total',3:'\u00d74 total',7:'\u00d78 total',99:'\u221e'}[v]||`\u00d7${parseInt(v)+1}`;redrawBar(S.bars-1);}
+function setPartner(v){
+  S.twoPlayer = (v === 'friend');
+  chips('partnerGroup', v);
+  document.getElementById('valPartner').textContent = S.twoPlayer ? 'Friend' : 'Computer';
+  // Show hint note and hide drum volume in friend mode
+  const note = document.getElementById('partnerNote');
+  const volSection = document.getElementById('assistVolSection');
+  if(note) note.style.display = S.twoPlayer ? 'block' : 'none';
+  if(volSection) volSection.style.display = S.twoPlayer ? 'none' : '';
+  // Reset bear states on mode switch
+  setBear('ready');
+  setBoxBear('ready');
+}
+
+
+
 function updateAssistVol(v){S.assistVol=v/100;document.getElementById('assistVolVal').textContent=`${v}%`;document.getElementById('valAssistVol').textContent=`${v}%`;}
 
 function updateAssistanceLabel(){
@@ -1871,26 +1917,32 @@ function handleStaveTap(){
 // tapLog: array of performance.now() timestamps for the current repeat
 // repeatStartTime: performance.now() when the current repeat began
 // lastDots: scored dot data from the last completed repeat, drawn after finish
-let tapLog=[], repeatStartPerfTime=0, lastDots=null, prevDots=null;
+let tapLog=[], tapLog2=[], repeatStartPerfTime=0, lastDots=null, prevDots=null, lastDots2=null, prevDots2=null;
 
 function recordRepeatStart(acStartSec){
   tapLog=[];
+  tapLog2=[];
   const ac=getAC();
   repeatStartPerfTime = performance.now() - (acStartSec - ac.currentTime)*1000;
   // Fade current dots to half immediately — new round is starting
   prevDots=lastDots;
   lastDots=null;
+  prevDots2=lastDots2;
+  lastDots2=null;
   redrawBar(0);
 }
 
 // Timing windows (ms)
 const DOT_PERFECT=150, DOT_MARGINAL=300, DOT_WINDOW=500;
 
-function scoreTaps(){
+function scoreTaps(log, isP2){
   // Build list of expected hits (non-rest only, isGroupFirst only — one dot per notehead position)
   // For groups (ti-ti etc.) every sub-hit has its own entry in rhythmTimeline, so we get a dot per sub-hit.
   const bd=bdSec()*1000; // ms per beat
   const B=bpb();
+  const hitCol  = isP2 ? '#E87D6A' : '#FFD770';   // coral for P2, amber for P1
+  const crossCol = isP2 ? '#E87D6A' : '#C94040';
+  const extraCol = isP2 ? 'rgba(232,125,106,0.35)' : 'rgba(255,250,239,0.35)';
 
   // All non-rest timeline events become expected hits
   const expected = rhythmTimeline
@@ -1913,7 +1965,7 @@ function scoreTaps(){
   const dots=[];
 
   // Match each tap to nearest unmatched expected hit within DOT_WINDOW
-  const tapTimes = tapLog.map(t => (t - repeatStartPerfTime));
+  const tapTimes = (log||tapLog).map(t => (t - repeatStartPerfTime));
   const usedTaps = new Set();
 
   for(let ei=0; ei<expected.length; ei++){
@@ -1931,9 +1983,9 @@ function scoreTaps(){
       expected[ei].matched=true;
       const shift=Math.max(-BEAT_W/2, Math.min(BEAT_W/2, (bestDelta/bd)*BEAT_W));
       if(Math.abs(bestDelta)<=DOT_PERFECT){
-        dots.push({type:'dot',  x:exp.x+shift, barIdx:exp.barIdx, colour:'#FFD770'});
+        dots.push({type:'dot',  x:exp.x+shift, barIdx:exp.barIdx, colour:hitCol});
       } else if(Math.abs(bestDelta)<=DOT_MARGINAL){
-        dots.push({type:'ring', x:exp.x+shift, barIdx:exp.barIdx, colour:'#FFD770'});
+        dots.push({type:'ring', x:exp.x+shift, barIdx:exp.barIdx, colour:hitCol});
       }
       // beyond DOT_MARGINAL: tap was so late/early it's effectively a miss — no dot
     }
@@ -1951,14 +2003,14 @@ function scoreTaps(){
       if(d<DOT_WINDOW && d<bestD){ bestD=d; nearRest=r; }
     }
     if(nearRest){
-      dots.push({type:'cross', x:nearRest.x, barIdx:nearRest.barIdx, colour:'#C94040'});
+      dots.push({type:'cross', x:nearRest.x, barIdx:nearRest.barIdx, colour:crossCol});
     } else {
       // Extra tap — place at its actual time position, find which bar
       const beatPos=t/bd;
       const barIdx=Math.min(S.bars-1, Math.floor(beatPos/B));
       const barLocalBeat=beatPos - barIdx*B;
       const x=notesStartX[barIdx] + barLocalBeat*BEAT_W;
-      dots.push({type:'extra', x, barIdx, colour:'rgba(255,250,239,0.35)'});
+      dots.push({type:'extra', x, barIdx, colour:extraCol});
     }
   }
 
@@ -2020,6 +2072,13 @@ function playUserDrum(){
   ng.gain.setValueAtTime(v*0.25,t);ng.gain.exponentialRampToValueAtTime(0.001,t+0.04);s.start(t);
 }
 
+// Direct bear animation — used by Player 2 in 2-player mode (bypasses the 2-player guard in setBear)
+function setBearDirect(name){
+  ['bearJustBear','bearDrumReady','bearDrumMotion','bearLeftStick','bearRightStick'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  const m={ready:'bearJustBear',justbear:'bearJustBear',drumready:'bearDrumReady',drummotion:'bearDrumMotion',leftstick:'bearLeftStick',rightstick:'bearRightStick'};
+  (document.getElementById(m[name]||'bearJustBear')).classList.add('active');
+}
+
 function handleUserTap(e){
   if(e) e.preventDefault();
   if(!PS.playing||PS._inCountIn) return;
@@ -2032,24 +2091,41 @@ function handleUserTap(e){
   setTimeout(()=>{ if(PS.playing) setBoxBear('drummotion'); },100);
 }
 
+let _p2StickSide=0;
+function handlePlayer2Tap(e){
+  if(e) e.preventDefault();
+  if(!PS.playing||PS._inCountIn) return;
+  tapLog2.push(performance.now());
+  const side=_p2StickSide%2===0?'leftstick':'rightstick';
+  _p2StickSide++;
+  setBearDirect(side);
+  playUserDrum();
+  setTimeout(()=>{ if(PS.playing) setBearDirect('drummotion'); },100);
+}
+
 function initInputHandlers(){
-  // Side pads — touch
-  ['leftPad','rightPad'].forEach(id=>{
-    const el=document.getElementById(id);
-    el.addEventListener('touchstart',e=>{e.preventDefault();handleUserTap(e);},{passive:false});
-    el.addEventListener('mousedown',e=>{handleUserTap(e);});
-  });
-  // Bear zone taps → handled by individual bear-stage elements now
+  // Left pad — always Player 1
+  const lp=document.getElementById('leftPad');
+  lp.addEventListener('touchstart',e=>{e.preventDefault();handleUserTap(e);},{passive:false});
+  lp.addEventListener('mousedown',e=>{handleUserTap(e);});
+  // Right pad — Player 1 in 1-player mode, Player 2 in 2-player mode
+  const rp=document.getElementById('rightPad');
+  rp.addEventListener('touchstart',e=>{e.preventDefault();S.twoPlayer?handlePlayer2Tap(e):handleUserTap(e);},{passive:false});
+  rp.addEventListener('mousedown',e=>{S.twoPlayer?handlePlayer2Tap(e):handleUserTap(e);});
   // Stave area → new rhythm
   document.getElementById('staveArea').addEventListener('touchstart',e=>{e.preventDefault();handleStaveTap();},{passive:false});
   document.getElementById('staveArea').addEventListener('mousedown',()=>handleStaveTap());
-  // Keyboard: any letter key → user tap; Space → play/stop; Enter → new rhythm
+  // Keyboard: Space → play/stop; Enter → new rhythm; letters → tap
+  // In 2-player, letters A-M = P1, N-Z = P2 (rough split; fine for testing)
   document.addEventListener('keydown',e=>{
     if(e.repeat) return;
     if(e.metaKey||e.ctrlKey||e.altKey) return;
     if(e.key===' '){e.preventDefault();handlePlayStop();}
     else if(e.key==='Enter'){e.preventDefault();handleStaveTap();}
-    else if(e.key.length===1&&/^[a-zA-Z]$/.test(e.key)) handleUserTap(e);
+    else if(e.key.length===1&&/^[a-zA-Z]$/.test(e.key)){
+      if(S.twoPlayer && e.key.toLowerCase()>='n') handlePlayer2Tap(e);
+      else handleUserTap(e);
+    }
   });
 }
 
