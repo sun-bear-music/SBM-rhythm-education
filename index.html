@@ -1616,6 +1616,7 @@ function startCountIn(cb){
       if(!PS.playing)return;
       setBear(bin===B?'drummotion':'drumready');
       setBoxBear(bin===B?'drummotion':'drumready');
+      if(S.twoPlayer) setBearDirect(bin===B?'drummotion':'drumready');
       // Pulse the overlay number
       numEl.textContent=bin;
       numEl.classList.remove('pulse');
@@ -2115,16 +2116,18 @@ function initInputHandlers(){
   // Stave area → new rhythm
   document.getElementById('staveArea').addEventListener('touchstart',e=>{e.preventDefault();handleStaveTap();},{passive:false});
   document.getElementById('staveArea').addEventListener('mousedown',()=>handleStaveTap());
-  // Keyboard: Space → play/stop; Enter → new rhythm; letters → tap
-  // In 2-player, letters A-M = P1, N-Z = P2 (rough split; fine for testing)
+  // Keyboard: Space → play/stop; Enter → new rhythm; defined keys → tap
+  const P1_KEYS = new Set(['q','w','e','r','a','s','d','f','z','x','c']);
+  const P2_KEYS = new Set(['u','i','o','p','j','k','l','n','m']);
   document.addEventListener('keydown',e=>{
     if(e.repeat) return;
     if(e.metaKey||e.ctrlKey||e.altKey) return;
     if(e.key===' '){e.preventDefault();handlePlayStop();}
     else if(e.key==='Enter'){e.preventDefault();handleStaveTap();}
-    else if(e.key.length===1&&/^[a-zA-Z]$/.test(e.key)){
-      if(S.twoPlayer && e.key.toLowerCase()>='n') handlePlayer2Tap(e);
-      else handleUserTap(e);
+    else if(e.key.length===1){
+      const k=e.key.toLowerCase();
+      if(P1_KEYS.has(k)) handleUserTap(e);
+      else if(S.twoPlayer && P2_KEYS.has(k)) handlePlayer2Tap(e);
     }
   });
 }
