@@ -39,14 +39,10 @@ SVG ASSETS (all embedded as base64)
     triplet        — 3 quaver triplet, 1 beat
     ti-triola      — qu + sq triplet, 1 beat
     triola-ti      — sq triplet + qu, 1 beat
-    ta-ah          — minim (half note), 2 beats
-    sa-ah          — minim rest, 2 beats
     tahm           — dotted crotchet (dotted quarter note), 1.5 beats
     tihm           — dotted quaver (dotted eighth note), 0.75 beats
     sahm           — dotted crotchet rest, 1.5 beats
     sihm           — dotted quaver rest, 0.75 beats
-    ta-ah-ah-ah    — semibreve (whole note), 4 beats
-    sa-ah-ah-ah    — semibreve rest, 4 beats
 
   BARLINES / CLEF:
     drum_clef                 — percussion clef (two vertical rectangles)
@@ -124,17 +120,15 @@ RHYTHM GENERATION
   - Each component note gets its own gIdx → individual highlighting during playback
   - beatsAvail = bpb() = numerator of time signature; groupings never cross bar lines
 
-  LEVELS (8 total):
-    1: ta-ah-ah-ah, sa-ah-ah-ah, ta-ah, sa-ah
-    2: ta, sah
-    3: ta-ah-ah-ah, sa-ah-ah-ah, ta-ah, sa-ah, ta, sah
-    4: ta, sah, ti-ti
-    5: ta, sah, ti-ti, ti, si
+  LEVELS (6 total):
+    1: ta, sah
+    2: ta, sah, ti-ti
+    3: ta, sah, ti-ti, ti, si
         → groupings unlock automatically: si+ti, ti+si, ti+ta+ti, si+ta+ti, ti+ta+si
-    6: + tika-tika, tika-ti, ti-tika
-    7: + timka, tika, tahm, sahm, tika-ka, seka-ti
+    4: + tika-tika, tika-ti, ti-tika
+    5: + timka, tika, tahm, sahm, tika-ka, seka-ti
         → groupings: si+tika, tika+si, ti+tahm, tahm+ti, sahm+ti, sahm+tika
-    8: + triplet, triola, triola-ti, ti-triola, triola-triola
+    6: + triplet, triola, triola-ti, ti-triola, triola-triola
         → groupings: si+triola, triola+si
 
 ─────────────────────────────────────────────────────────────────────────────
@@ -1224,17 +1218,15 @@ const NOTE_DEFS={
 };
 
 const LEVELS=[
-  {num:1,label:'Level 1',desc:'Long notes',                 pool:['ta-ah-ah-ah','sa-ah-ah-ah','ta-ah','sa-ah']},
-  {num:2,label:'Level 2',desc:'Crotchets',                  pool:['ta','sah']},
-  {num:3,label:'Level 3',desc:'Long & short notes',         pool:['ta-ah-ah-ah','sa-ah-ah-ah','ta-ah','sa-ah','ta','sah']},
-  {num:4,label:'Level 4',desc:'+ 2 quavers',                pool:['ta','sah','ti-ti']},
-  {num:5,label:'Level 5',desc:'+ single quavers',           pool:['ta','sah','ti-ti','ti','si']},
-  {num:6,label:'Level 6',desc:'+ semiquaver groups',        pool:['ta','sah','ti-ti','ti','si','tika-tika','tika-ti','ti-tika']},
-  {num:7,label:'Level 7',desc:'+ dotted & semiquaver pairs',pool:['ta','sah','ti-ti','ti','si','tika-tika','tika-ti','ti-tika','timka','tika','tahm','sahm','tika-ka','seka-ti']},
-  {num:8,label:'Level 8',desc:'+ triplets',                 pool:['ta','sah','ti-ti','ti','si','tika-tika','tika-ti','ti-tika','timka','tika','tahm','sahm','tika-ka','seka-ti','triplet','triola','triola-ti','ti-triola','triola-triola']},
+  {num:1,label:'Level 1',desc:'Crotchets',                  pool:['ta','sah']},
+  {num:2,label:'Level 2',desc:'+ 2 quavers',                pool:['ta','sah','ti-ti']},
+  {num:3,label:'Level 3',desc:'+ single quavers',           pool:['ta','sah','ti-ti','ti','si']},
+  {num:4,label:'Level 4',desc:'+ semiquaver groups',        pool:['ta','sah','ti-ti','ti','si','tika-tika','tika-ti','ti-tika']},
+  {num:5,label:'Level 5',desc:'+ dotted & semiquaver pairs',pool:['ta','sah','ti-ti','ti','si','tika-tika','tika-ti','ti-tika','timka','tika','tahm','sahm','tika-ka','seka-ti']},
+  {num:6,label:'Level 6',desc:'+ triplets',                 pool:['ta','sah','ti-ti','ti','si','tika-tika','tika-ti','ti-tika','timka','tika','tahm','sahm','tika-ka','seka-ti','triplet','triola','triola-ti','ti-triola','triola-triola']},
 ];
 
-const S={bars:2,tempo:80,timeSig:'4/4',countInBars:1,metronome:'both',metronomeVol:0.6,repeats:1,assistVol:0.8,assistMode:'duet',level:4,metronomeSound:'Click'};
+const S={bars:2,tempo:80,timeSig:'4/4',countInBars:1,metronome:'both',metronomeVol:0.6,repeats:1,assistVol:0.8,assistMode:'duet',level:2,metronomeSound:'Click'};
 let drumEnabled=true;
 let barHighlightEnabled=true;
 let noteHighlightEnabled=true;
@@ -1795,7 +1787,7 @@ function updateTempo(v){
 }
 
 // Time signatures allowed per level
-const LEVEL_TIME_SIGS={1:['4/4','2/4']};
+const LEVEL_TIME_SIGS={};
 function enforceTimeSigForLevel(){
   const allowed=LEVEL_TIME_SIGS[S.level]||['4/4','2/4','3/4','5/4'];
   document.querySelectorAll('#timeSigGroup .radio-chip').forEach(el=>{
