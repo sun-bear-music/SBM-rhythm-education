@@ -73,7 +73,7 @@ LAYOUT SYSTEM — BEAT GRID
     BEAT_W    = 148px — width of one crotchet beat slot
     BAR_MARGIN = 14px — gap between barline and first/last beat slot
     SY        = 86px  — Y coordinate of the staff line within each canvas
-    CH        = 140px — canvas height per row
+    CH        = 160px — canvas height per row (extra height accommodates 2-player dot rows)
 
   Beat position formula:
     x = notesStartX + beatPosition * BEAT_W
@@ -1125,7 +1125,7 @@ const BAR_MARGIN = 8;    // px between barline and first/last beat slot
 
 // Canvas / stave metrics
 const SY  = 86;   // staff line Y (space above for triplet numbers)
-const CH  = 140;  // canvas height per bar row
+const CH  = 160;  // canvas height per bar row (extra space for 2-player dot rows)
 
 // Clef + time sig on row 0
 // Clef height derived from reference SVG: clef spans ~57.5px in a 167px canvas → ~34% of CH
@@ -1495,11 +1495,11 @@ function redrawBar(b){
   if(barCanvases[0]){
     const dpr = window.devicePixelRatio || 1;
     drawAllBarsOnCanvas(barCanvases[0], barCanvases[0].width / dpr);
-    drawDots(prevDots, 0.5, 14);
+    drawDots(prevDots, 0.5, 18);
     drawDots(lastDots, 1.0, 0);
     if(S.twoPlayer){
-      drawDots(prevDots2, 0.5, 28, true);
-      drawDots(lastDots2, 1.0, 14, true);
+      drawDots(prevDots2, 0.5, 54, true);
+      drawDots(lastDots2, 1.0, 36, true);
     }
   }
 }
@@ -1680,11 +1680,11 @@ function playRepeat(ri,st){
     // Score this repeat's taps and draw dots
     lastDots=scoreTaps(tapLog, false);
     if(S.twoPlayer) lastDots2=scoreTaps(tapLog2, true);
-    drawDots(prevDots, 0.5, 14);
+    drawDots(prevDots, 0.5, 18);
     drawDots(lastDots, 1.0, 0);
     if(S.twoPlayer){
-      drawDots(prevDots2, 0.5, 28, true);
-      drawDots(lastDots2, 1.0, 14, true);
+      drawDots(prevDots2, 0.5, 54, true);
+      drawDots(lastDots2, 1.0, 36, true);
     }
     const next=ri+1;
     if(plays!==Infinity&&next>=plays){
