@@ -1125,7 +1125,7 @@ const BAR_MARGIN = 8;    // px between barline and first/last beat slot
 
 // Canvas / stave metrics
 const SY  = 86;   // staff line Y (space above for triplet numbers)
-const CH  = 160;  // canvas height per bar row (extra space for 2-player dot rows)
+const CH  = 145;  // canvas height per bar row
 
 // Clef + time sig on row 0
 // Clef height derived from reference SVG: clef spans ~57.5px in a 167px canvas → ~34% of CH
@@ -1495,11 +1495,11 @@ function redrawBar(b){
   if(barCanvases[0]){
     const dpr = window.devicePixelRatio || 1;
     drawAllBarsOnCanvas(barCanvases[0], barCanvases[0].width / dpr);
-    drawDots(prevDots, 0.5, 18);
+    drawDots(prevDots, 0.5, 0);
     drawDots(lastDots, 1.0, 0);
     if(S.twoPlayer){
-      drawDots(prevDots2, 0.5, 54, true);
-      drawDots(lastDots2, 1.0, 36, true);
+      drawDots(prevDots2, 0.5, 18);
+      drawDots(lastDots2, 1.0, 18);
     }
   }
 }
@@ -1680,11 +1680,11 @@ function playRepeat(ri,st){
     // Score this repeat's taps and draw dots
     lastDots=scoreTaps(tapLog, false);
     if(S.twoPlayer) lastDots2=scoreTaps(tapLog2, true);
-    drawDots(prevDots, 0.5, 18);
+    drawDots(prevDots, 0.5, 0);
     drawDots(lastDots, 1.0, 0);
     if(S.twoPlayer){
-      drawDots(prevDots2, 0.5, 54, true);
-      drawDots(lastDots2, 1.0, 36, true);
+      drawDots(prevDots2, 0.5, 18);
+      drawDots(lastDots2, 1.0, 18);
     }
     const next=ri+1;
     if(plays!==Infinity&&next>=plays){
@@ -1933,19 +1933,15 @@ function recordRepeatStart(acStartSec){
   redrawBar(0);
 }
 
-// Timing windows (ms)
-const DOT_PERFECT=150, DOT_MARGINAL=300, DOT_WINDOW=500;
+// Timing windows (ms) — still used for x-position matching, not for dot type
+const DOT_WINDOW=500;
 
 function scoreTaps(log, isP2){
-  // Build list of expected hits (non-rest only, isGroupFirst only — one dot per notehead position)
-  // For groups (ti-ti etc.) every sub-hit has its own entry in rhythmTimeline, so we get a dot per sub-hit.
-  const bd=bdSec()*1000; // ms per beat
+  const bd=bdSec()*1000;
   const B=bpb();
-  const hitCol  = isP2 ? '#E87D6A' : '#FFD770';   // coral for P2, amber for P1
-  const crossCol = isP2 ? '#E87D6A' : '#C94040';
-  const extraCol = isP2 ? 'rgba(232,125,106,0.35)' : 'rgba(255,250,239,0.35)';
+  const colour = isP2 ? '#E87D6A' : '#FFD770';
 
-  // All non-rest timeline events become expected hits
+  // All non-rest timeline events are expected hits
   const expected = rhythmTimeline
     .filter(ev=>!ev.isRest)
     .map(ev=>{
@@ -1954,18 +1950,7 @@ function scoreTaps(log, isP2){
       return { tMs: ev.beatOffset * bd, x, barIdx: ev.barIdx, matched: false };
     });
 
-  // Rest events — taps near these are "wrong note" crosses
-  const rests = rhythmTimeline
-    .filter(ev=>ev.isRest&&ev.isGroupFirst)
-    .map(ev=>{
-      const barLocalBeat = ev.beatOffset - ev.barIdx * B;
-      const x = notesStartX[ev.barIdx] + barLocalBeat * BEAT_W;
-      return { tMs: ev.beatOffset * bd, x, barIdx: ev.barIdx };
-    });
-
   const dots=[];
-
-  // Match each tap to nearest unmatched expected hit within DOT_WINDOW
   const tapTimes = (log||tapLog).map(t => (t - repeatStartPerfTime));
   const usedTaps = new Set();
 
@@ -1981,39 +1966,12 @@ function scoreTaps(log, isP2){
     }
     if(bestTi>=0){
       usedTaps.add(bestTi);
-      expected[ei].matched=true;
       const shift=Math.max(-BEAT_W/2, Math.min(BEAT_W/2, (bestDelta/bd)*BEAT_W));
-      if(Math.abs(bestDelta)<=DOT_PERFECT){
-        dots.push({type:'dot',  x:exp.x+shift, barIdx:exp.barIdx, colour:hitCol});
-      } else if(Math.abs(bestDelta)<=DOT_MARGINAL){
-        dots.push({type:'ring', x:exp.x+shift, barIdx:exp.barIdx, colour:hitCol});
-      }
-      // beyond DOT_MARGINAL: tap was so late/early it's effectively a miss — no dot
+      dots.push({x: exp.x + shift, barIdx: exp.barIdx, colour});
     }
-    // No match: nothing played, nothing drawn
+    // No match → missed note, no dot drawn
   }
-
-  // Unmatched taps — check if near a rest (cross) or truly extra (small dark dot)
-  for(let ti=0; ti<tapTimes.length; ti++){
-    if(usedTaps.has(ti)) continue;
-    const t=tapTimes[ti];
-    // Check if near a rest
-    let nearRest=null, bestD=Infinity;
-    for(const r of rests){
-      const d=Math.abs(t-r.tMs);
-      if(d<DOT_WINDOW && d<bestD){ bestD=d; nearRest=r; }
-    }
-    if(nearRest){
-      dots.push({type:'cross', x:nearRest.x, barIdx:nearRest.barIdx, colour:crossCol});
-    } else {
-      // Extra tap — place at its actual time position, find which bar
-      const beatPos=t/bd;
-      const barIdx=Math.min(S.bars-1, Math.floor(beatPos/B));
-      const barLocalBeat=beatPos - barIdx*B;
-      const x=notesStartX[barIdx] + barLocalBeat*BEAT_W;
-      dots.push({type:'extra', x, barIdx, colour:extraCol});
-    }
-  }
+  // Unmatched taps (extras, rests) are silently ignored — position tells the story
 
   return dots;
 }
@@ -2022,35 +1980,16 @@ function drawDots(dots, alpha, yOffset){
   if(!dots||!dots.length) return;
   if(!barCanvases[0]) return;
   const canvas=barCanvases[0];
-  const dpr=window.devicePixelRatio||1;
   const ctx=canvas.getContext('2d');
   const DOT_Y = SY + 22 + (yOffset||0);
   const DOT_R = 4.5;
-  const CROSS = 5;
-
   ctx.save();
   ctx.globalAlpha = alpha ?? 1.0;
   for(const d of dots){
-    const cx=d.x;
     ctx.fillStyle=d.colour;
-    ctx.strokeStyle=d.colour;
-    if(d.type==='dot'||d.type==='extra'){
-      const r=d.type==='extra'?3:DOT_R;
-      ctx.beginPath();
-      ctx.arc(cx, DOT_Y, r, 0, Math.PI*2);
-      ctx.fill();
-    } else if(d.type==='ring'){
-      ctx.lineWidth=1.8;
-      ctx.beginPath();
-      ctx.arc(cx, DOT_Y, DOT_R, 0, Math.PI*2);
-      ctx.stroke();
-    } else if(d.type==='cross'){
-      ctx.lineWidth=1.8;
-      ctx.beginPath();
-      ctx.moveTo(cx-CROSS, DOT_Y-CROSS); ctx.lineTo(cx+CROSS, DOT_Y+CROSS);
-      ctx.moveTo(cx+CROSS, DOT_Y-CROSS); ctx.lineTo(cx-CROSS, DOT_Y+CROSS);
-      ctx.stroke();
-    }
+    ctx.beginPath();
+    ctx.arc(d.x, DOT_Y, DOT_R, 0, Math.PI*2);
+    ctx.fill();
   }
   ctx.restore();
 }
