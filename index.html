@@ -148,10 +148,11 @@ PLAYBACK ENGINE
     - isGroupFirst: true for first sub-hit of a note group (triggers highlight)
     - Every sub-hit (including within beamed groups) triggers bear clap + drum
 
-  Modes:
-    Duet:        drum sounds every play-through
-    Listen First: drum on first play-through only, then rhythm highlighting only
-    Play First:  rhythm only first, then drum joins second play-through
+  Playback: both bears always play the rhythm together, in unison, every
+    play-through. No scoring, no user timing input of any kind.
+    [PENDING next phase: a "Try First" toggle — first play-through silent/
+    idle bears + stave highlighting only, second play-through full bears+
+    sound, overriding whatever repeats is set to. Not yet implemented.]
 
   Count-in: visual (number display) and/or audio metronome clicks.
   Visual metronome: beat pip display in the transport bar. Shows one numbered circle
@@ -159,7 +160,7 @@ PLAYBACK ENGINE
     amber. Updates during count-in and playback. Cleared on stop/finish.
     Rebuilt on time sig change via buildBeatDisplay(). setActiveBeat(n) sets active
     pip (1-based); setActiveBeat(0) clears all.
-  Repeats: 1×, 2×, 4×, 8×, ∞ (or fixed 2× in Listen/Play First modes).
+  Repeats: No repeat / ×2 / ×4 / ∞.
 
 ─────────────────────────────────────────────────────────────────────────────
 SETTINGS (modal overlay, opened via ⚙ Settings button in transport bar)
@@ -169,9 +170,10 @@ SETTINGS (modal overlay, opened via ⚙ Settings button in transport bar)
   Time Signature: 4/4, 2/4, 3/4, 5/4  (compound time removed pending new SVGs)
   Count In: 1 or 2 bars; Visual / Sound / Both
   Metronome: On/Off + volume
-  Repeats: No repeat / ×2 / ×4 / ×8 / ∞
-  Assistance Volume: drum sound volume
-  Assistance Mode: Duet / Listen First / Play First
+  Repeats: No repeat / ×2 / ×4 / ∞
+  Drum Volume: assistance drum sound volume
+  [PENDING next phase: bar-count 1–8 picker, custom-level checkbox popup,
+  per-bear instrument switcher icons — see MODE SCAFFOLD note below.]
 
 ─────────────────────────────────────────────────────────────────────────────
 PLAY MODE — FREE-PLAY SANDBOX
@@ -213,23 +215,21 @@ PLAY MODE — FREE-PLAY SANDBOX
 
 
 ─────────────────────────────────────────────────────────────────────────────
-MODE SCAFFOLD
+MODE SCAFFOLD  [UPDATED — tap-input & two-player mode removed]
 ─────────────────────────────────────────────────────────────────────────────
-  Two modes: Computer partner (default) and Friend (2-player).
-  S.twoPlayer: false = computer partner; true = two human players.
-  In Friend mode:
-    - Left pad → Player 1 (user/box bear, left side)
-    - Right pad → Player 2 (computer bear, right side)
-    - Drum sound auto-disabled; computer bear animates on P2 taps only
-    - Both players get independent dot rows: P1 amber (row 1), P2 coral (row 2)
-    - setBear() suppresses rhythm-driven animation; setBearDirect() used for P2 taps
-  Setting in Settings modal under "Partner": Computer / Friend chips.
+  No tap-timing input of any kind. There is no scoring, no dot feedback,
+  and no two-player/"Friend" mode — both bears always play the rhythm
+  together, in unison, driven entirely by the rhythm timeline.
+  Clicking/tapping either bear starts/stops playback (handlePlayStop()).
   enterMode(mode): shows correct screens, hides others, manages settings visibility
   goHome(): stops playback, returns to start screen
   Settings cog: visible in Practise only
   Home button: top right of countBar, visible in all active modes
-  Play mode: free-play sandbox (radio + two bears with items). See PLAY MODE section.
   Perform mode: placeholder — built out in future sessions.
+  NOTE: The old free-play "Play Mode" screen/JS (radio, item-switching bears,
+  hit sounds) is still present in the code but no longer reachable from the
+  start screen — it's kept as source material to be migrated into Practise
+  mode's bear instrument-switching in the next phase, then removed for good.
 
 ─────────────────────────────────────────────────────────────────────────────
 KNOWN REMAINING ISSUES / FUTURE WORK
@@ -924,7 +924,6 @@ HOW TO CONTINUE DEVELOPMENT
   </div>
   <div id="startTitle">Drum Bear Duo</div>
   <div id="startButtons">
-    <button class="mode-btn" onclick="enterMode('play')">Play</button>
     <button class="mode-btn mode-btn-primary" onclick="enterMode('practise')">Practise</button>
     <button class="mode-btn" onclick="enterMode('perform')">Perform</button>
   </div>
@@ -944,8 +943,7 @@ HOW TO CONTINUE DEVELOPMENT
         <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Time Signature <span class="acc-val" id="valTimeSig">4/4</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="radio-group" id="timeSigGroup"><div class="radio-chip" data-val="2/4" onclick="setTimeSig('2/4')">2/4</div><div class="radio-chip" data-val="3/4" onclick="setTimeSig('3/4')">3/4</div><div class="radio-chip selected" data-val="4/4" onclick="setTimeSig('4/4')">4/4</div><div class="radio-chip" data-val="5/4" onclick="setTimeSig('5/4')">5/4</div></div></div></div></div>
         <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Count In <span class="acc-val" id="valCountIn">1 bar</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="form-row"><label>Bars</label><div class="radio-group" id="countInBarsGroup"><div class="radio-chip selected" data-val="1" onclick="setCountInBars(1)">1 bar</div><div class="radio-chip" data-val="2" onclick="setCountInBars(2)">2 bars</div></div></div></div></div></div>
         <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Metronome <span class="acc-val" id="valMetronome">Visual + Sound</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="form-row"><div class="radio-group" id="metronomeGroup"><div class="radio-chip selected" data-val="both" onclick="setMetronome('both')">Visual + Sound</div><div class="radio-chip" data-val="visual" onclick="setMetronome('visual')">Visual only</div><div class="radio-chip" data-val="sound" onclick="setMetronome('sound')">Sound only</div><div class="radio-chip" data-val="none" onclick="setMetronome('none')">None</div></div></div><div class="form-row"><label>Volume</label><input type="range" id="metronomeVol" min="0" max="100" value="60" oninput="updateMetronomeVol(this.value)"><span class="val-badge" id="metronomeVolVal">60%</span></div><div class="form-row"><label>Sound</label><div class="radio-group" id="metronomeSoundGroup"><div class="radio-chip" data-val="Agogo" onclick="setMetronomeSound('Agogo')">Agogo</div><div class="radio-chip" data-val="Bongo" onclick="setMetronomeSound('Bongo')">Bongo</div><div class="radio-chip selected" data-val="Click" onclick="setMetronomeSound('Click')">Click</div><div class="radio-chip" data-val="Shaker" onclick="setMetronomeSound('Shaker')">Shaker</div><div class="radio-chip" data-val="Triangle" onclick="setMetronomeSound('Triangle')">Triangle</div><div class="radio-chip" data-val="Woodblock" onclick="setMetronomeSound('Woodblock')">Woodblock</div></div></div></div></div></div>
-        <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Repeats <span class="acc-val" id="valRepeats">x2 total</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="radio-group" id="repeatsGroup"><div class="radio-chip" data-val="0" onclick="setRepeats(0)">No repeat</div><div class="radio-chip selected" data-val="1" onclick="setRepeats(1)">x2 total</div><div class="radio-chip" data-val="3" onclick="setRepeats(3)">x4 total</div><div class="radio-chip" data-val="7" onclick="setRepeats(7)">x8 total</div><div class="radio-chip" data-val="99" onclick="setRepeats(99)">&#8734;</div></div></div></div></div>
-        <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Partner <span class="acc-val" id="valPartner">Computer</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="form-row"><div class="radio-group" id="partnerGroup"><div class="radio-chip selected" data-val="computer" onclick="setPartner('computer')">Computer</div><div class="radio-chip" data-val="friend" onclick="setPartner('friend')">Friend</div></div></div><div class="info-note" id="partnerNote" style="display:none;">In Friend mode, Player 1 taps left · Player 2 taps right. Drum sound is off.</div></div></div></div>
+        <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Repeats <span class="acc-val" id="valRepeats">x2 total</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="radio-group" id="repeatsGroup"><div class="radio-chip" data-val="0" onclick="setRepeats(0)">No repeat</div><div class="radio-chip selected" data-val="1" onclick="setRepeats(1)">x2 total</div><div class="radio-chip" data-val="3" onclick="setRepeats(3)">x4 total</div><div class="radio-chip" data-val="99" onclick="setRepeats(99)">&#8734;</div></div></div></div></div>
         <div class="acc-section"><div class="acc-header" onclick="toggleAcc(this)">Note Highlight <span class="acc-val" id="valAssistance">On</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="form-row"><label>Beat highlight</label><div class="radio-group" id="beatHighlightGroup"><div class="radio-chip selected" data-val="on" onclick="setBeatHighlight('on')">On</div><div class="radio-chip" data-val="off" onclick="setBeatHighlight('off')">Off</div></div></div></div></div></div>
         <div class="acc-section" id="assistVolSection"><div class="acc-header" onclick="toggleAcc(this)">Drum Volume <span class="acc-val" id="valAssistVol">80%</span><span class="acc-chevron">&#9660;</span></div><div class="acc-body"><div class="acc-content"><div class="form-row"><label>Volume</label><input type="range" id="assistVolSlider" min="0" max="100" value="80" oninput="updateAssistVol(this.value)"><span class="val-badge" id="assistVolVal">80%</span></div></div></div></div>
 
@@ -1243,7 +1241,7 @@ const LEVELS=[
   {num:8,label:'Level 8',desc:'+ triplets',                 pool:['ta','sah','ti-ti','ti','si','tika-tika','tika-ti','ti-tika','timka','tika','tahm','sahm','tika-ka','seka-ti','triplet','triola','triola-ti','ti-triola','triola-triola']},
 ];
 
-const S={bars:2,tempo:80,timeSig:'4/4',countInBars:1,metronome:'both',metronomeVol:0.6,repeats:1,assistVol:0.8,assistMode:'duet',level:2,metronomeSound:'Click',twoPlayer:false};
+const S={bars:2,tempo:80,timeSig:'4/4',countInBars:1,metronome:'both',metronomeVol:0.6,repeats:1,assistVol:0.8,level:2,metronomeSound:'Click'};
 let drumEnabled=true;
 let barHighlightEnabled=true;
 let noteHighlightEnabled=true;
@@ -1495,12 +1493,6 @@ function redrawBar(b){
   if(barCanvases[0]){
     const dpr = window.devicePixelRatio || 1;
     drawAllBarsOnCanvas(barCanvases[0], barCanvases[0].width / dpr);
-    drawDots(prevDots, 0.5, 0);
-    drawDots(lastDots, 1.0, 0);
-    if(S.twoPlayer){
-      drawDots(prevDots2, 0.5, 18);
-      drawDots(lastDots2, 1.0, 18);
-    }
   }
 }
 
@@ -1580,15 +1572,13 @@ function playClick(t,accent,vol){
     o.start(t);o.stop(t+0.06);
   }
 }
-function shouldSound(ri){return S.assistMode==='duet'||(S.assistMode==='listen'&&ri===0)||(S.assistMode==='play'&&ri>=1);}
-function totalPlays(){if(S.assistMode!=='duet')return 2;if(S.repeats===99)return Infinity;return S.repeats+1;}
+function totalPlays(){if(S.repeats===99)return Infinity;return S.repeats+1;}
 function handlePlayStop(){if(PS.playing||PS.paused){handleStop();}else{handlePlay();}}
 function handlePlay(){if(PS.playing)return;PS.currentRepeat=0;PS.totalRepeats=totalPlays();startCountIn(()=>playRepeat(0));}
 function handlePause(){if(!PS.playing)return;PS.playing=false;PS.paused=true;clearAll();setBear('ready');document.getElementById('statusText').textContent='Paused';}
 function handleStop(){
   PS.playing=false;PS.paused=false;PS._inCountIn=false;
   clearAll();PS.highlightGroup=-1;PS.highlightBar=-1;
-  tapLog=[];tapLog2=[];lastDots=null;prevDots=null;lastDots2=null;prevDots2=null;
   setBear('ready');setBoxBear('ready');setActiveBeat(0);
   document.getElementById('beatNums').classList.remove('active');
   const ov=document.getElementById('countInOverlay');if(ov)ov.classList.remove('active');
@@ -1600,8 +1590,6 @@ function handleStop(){
 function resumePlay(){PS.paused=false;PS.playing=true;playRepeat(PS.currentRepeat);}
 function startCountIn(cb){
   PS.playing=true;PS._inCountIn=true;
-  _userStickSide=0;
-  _p2StickSide=0;
   const ac=getAC(),bd=bdSec(),B=bpb(),total=B*S.countInBars,st=ac.currentTime+0.05;
   document.getElementById('statusText').textContent='Count in…';
   // Clear count bar — it's for playback only
@@ -1616,7 +1604,6 @@ function startCountIn(cb){
       if(!PS.playing)return;
       setBear(bin===B?'drummotion':'drumready');
       setBoxBear(bin===B?'drummotion':'drumready');
-      if(S.twoPlayer) setBearDirect(bin===B?'drummotion':'drumready');
       // Pulse the overlay number
       numEl.textContent=bin;
       numEl.classList.remove('pulse');
@@ -1639,8 +1626,6 @@ function playRepeat(ri,st){
   if(!PS.playing)return;
   PS.currentRepeat=ri;
   _stickSide=0;
-  _userStickSide=0;
-  _p2StickSide=0;
   setBear('drummotion');
   setBoxBear('drummotion');
   document.getElementById('beatNums').classList.add('active');
@@ -1650,14 +1635,13 @@ function playRepeat(ri,st){
   document.getElementById('statusText').textContent=rText(ri);
   const ac=getAC(),bd=bdSec(),B=bpb(),totalBeats=S.bars*B;
   if(st===undefined) st=ac.currentTime+0.02;
-  recordRepeatStart(st);
   const endTime=st+totalBeats*bd;
   for(let i=0;i<totalBeats;i++){const isAcc=i%B===0,globalBeat=i+1,ms=(st+i*bd-ac.currentTime)*1000;at(()=>{if(PS.playing&&(S.metronome==='both'||S.metronome==='sound'))playClick(ac.currentTime+0.01,isAcc,S.metronomeVol);if(PS.playing)setActiveBeat(globalBeat);},ms);}
   rhythmTimeline.forEach(ev=>{
     const ms=(st+ev.beatOffset*bd-ac.currentTime)*1000;
     at(()=>{
       if(!PS.playing)return;
-      if(shouldSound(ri)&&drumEnabled&&!ev.isRest&&!S.twoPlayer)playDrum(ac.currentTime+0.01,S.assistVol);
+      if(drumEnabled&&!ev.isRest)playDrum(ac.currentTime+0.01,S.assistVol);
       if(ev.isGroupFirst){
         const prevBar=PS.highlightBar;
         PS.highlightGroup=ev.gIdx;PS.highlightBar=ev.barIdx;
@@ -1677,15 +1661,6 @@ function playRepeat(ri,st){
     if(!PS.playing)return;
     const prevBar=PS.highlightBar;PS.highlightGroup=-1;PS.highlightBar=-1;
     if(prevBar>=0)redrawBar(prevBar);
-    // Score this repeat's taps and draw dots
-    lastDots=scoreTaps(tapLog, false);
-    if(S.twoPlayer) lastDots2=scoreTaps(tapLog2, true);
-    drawDots(prevDots, 0.5, 0);
-    drawDots(lastDots, 1.0, 0);
-    if(S.twoPlayer){
-      drawDots(prevDots2, 0.5, 18);
-      drawDots(lastDots2, 1.0, 18);
-    }
     const next=ri+1;
     if(plays!==Infinity&&next>=plays){
       PS.playing=false;PS.paused=false;setBear('ready');setBoxBear('ready');setActiveBeat(0);
@@ -1694,7 +1669,7 @@ function playRepeat(ri,st){
     } else {playRepeat(next,endTime);}
   },(endTime-ac.currentTime)*1000);
 }
-function rText(ri){if(S.assistMode==='listen')return ri===0?'Listen first…':'Your turn!';if(S.assistMode==='play')return ri===0?'Play the rhythm…':'Now with drum…';return'Playing together…';}
+function rText(ri){return'Playing together…';}
 
 // ── BEAT DISPLAY (count bar) ─────────────────────────────────
 function buildBeatDisplay(){
@@ -1760,8 +1735,6 @@ function setActiveBeat(n){
 }
 
 function setBear(name){
-  // In 2-player mode the computer bear is driven by Player 2 taps, not the rhythm timeline
-  if(S.twoPlayer && name !== 'ready' && name !== 'justbear') return;
   ['bearJustBear','bearDrumReady','bearDrumMotion','bearLeftStick','bearRightStick'].forEach(id=>document.getElementById(id).classList.remove('active'));
   const m={ready:'bearJustBear',justbear:'bearJustBear',drumready:'bearDrumReady',drummotion:'bearDrumMotion',leftstick:'bearLeftStick',rightstick:'bearRightStick'};
   (document.getElementById(m[name]||'bearJustBear')).classList.add('active');
@@ -1846,23 +1819,7 @@ function setMetronome(v){
 }
 function updateMetronomeVol(v){S.metronomeVol=v/100;document.getElementById('metronomeVolVal').textContent=`${v}%`;}
 function setMetronomeSound(v){S.metronomeSound=v;chips('metronomeSoundGroup',v);}
-function setRepeats(v){S.repeats=parseInt(v);chips('repeatsGroup',v);document.getElementById('valRepeats').textContent={0:'No repeat',1:'\u00d72 total',3:'\u00d74 total',7:'\u00d78 total',99:'\u221e'}[v]||`\u00d7${parseInt(v)+1}`;redrawBar(S.bars-1);}
-function setPartner(v){
-  S.twoPlayer = (v === 'friend');
-  chips('partnerGroup', v);
-  document.getElementById('valPartner').textContent = S.twoPlayer ? 'Friend' : 'Computer';
-  // Show hint note and hide drum volume in friend mode
-  const note = document.getElementById('partnerNote');
-  const volSection = document.getElementById('assistVolSection');
-  if(note) note.style.display = S.twoPlayer ? 'block' : 'none';
-  if(volSection) volSection.style.display = S.twoPlayer ? 'none' : '';
-  // Reset bear states on mode switch
-  setBear('ready');
-  setBoxBear('ready');
-}
-
-
-
+function setRepeats(v){S.repeats=parseInt(v);chips('repeatsGroup',v);document.getElementById('valRepeats').textContent={0:'No repeat',1:'\u00d72 total',3:'\u00d74 total',99:'\u221e'}[v]||`\u00d7${parseInt(v)+1}`;redrawBar(S.bars-1);}
 function updateAssistVol(v){S.assistVol=v/100;document.getElementById('assistVolVal').textContent=`${v}%`;document.getElementById('valAssistVol').textContent=`${v}%`;}
 
 function updateAssistanceLabel(){
@@ -1912,160 +1869,17 @@ function handleStaveTap(){
   generateNewRhythm();
 }
 
-// ── USER TAP RECORDING & DOT FEEDBACK ───────────────────────
-// tapLog: array of performance.now() timestamps for the current repeat
-// repeatStartTime: performance.now() when the current repeat began
-// lastDots: scored dot data from the last completed repeat, drawn after finish
-let tapLog=[], tapLog2=[], repeatStartPerfTime=0, lastDots=null, prevDots=null, lastDots2=null, prevDots2=null;
-
-function recordRepeatStart(acStartSec){
-  tapLog=[];
-  tapLog2=[];
-  const ac=getAC();
-  repeatStartPerfTime = performance.now() - (acStartSec - ac.currentTime)*1000;
-  // Fade current dots to half immediately — new round is starting
-  prevDots=lastDots;
-  lastDots=null;
-  prevDots2=lastDots2;
-  lastDots2=null;
-  redrawBar(0);
-}
-
-// Timing windows (ms) — still used for x-position matching, not for dot type
-const DOT_WINDOW=500;
-
-function scoreTaps(log, isP2){
-  const bd=bdSec()*1000;
-  const B=bpb();
-  const colour = isP2 ? '#E87D6A' : '#FFD770';
-
-  // All non-rest timeline events are expected hits
-  const expected = rhythmTimeline
-    .filter(ev=>!ev.isRest)
-    .map(ev=>{
-      const barLocalBeat = ev.beatOffset - ev.barIdx * B;
-      const x = notesStartX[ev.barIdx] + barLocalBeat * BEAT_W;
-      return { tMs: ev.beatOffset * bd, x, barIdx: ev.barIdx, matched: false };
-    });
-
-  const dots=[];
-  const tapTimes = (log||tapLog).map(t => (t - repeatStartPerfTime));
-  const usedTaps = new Set();
-
-  for(let ei=0; ei<expected.length; ei++){
-    const exp=expected[ei];
-    let bestDelta=Infinity, bestTi=-1;
-    for(let ti=0; ti<tapTimes.length; ti++){
-      if(usedTaps.has(ti)) continue;
-      const delta=tapTimes[ti]-exp.tMs;
-      if(Math.abs(delta)<DOT_WINDOW && Math.abs(delta)<Math.abs(bestDelta)){
-        bestDelta=delta; bestTi=ti;
-      }
-    }
-    if(bestTi>=0){
-      usedTaps.add(bestTi);
-      const shift=Math.max(-BEAT_W/2, Math.min(BEAT_W/2, (bestDelta/bd)*BEAT_W));
-      dots.push({x: exp.x + shift, barIdx: exp.barIdx, colour});
-    }
-    // No match → missed note, no dot drawn
-  }
-  // Unmatched taps (extras, rests) are silently ignored — position tells the story
-
-  return dots;
-}
-
-function drawDots(dots, alpha, yOffset){
-  if(!dots||!dots.length) return;
-  if(!barCanvases[0]) return;
-  const canvas=barCanvases[0];
-  const ctx=canvas.getContext('2d');
-  const DOT_Y = SY + 22 + (yOffset||0);
-  const DOT_R = 4.5;
-  ctx.save();
-  ctx.globalAlpha = alpha ?? 1.0;
-  for(const d of dots){
-    ctx.fillStyle=d.colour;
-    ctx.beginPath();
-    ctx.arc(d.x, DOT_Y, DOT_R, 0, Math.PI*2);
-    ctx.fill();
-  }
-  ctx.restore();
-}
-
-// ── USER INPUT (side pads + keyboard) ───────────────────────
-let _userStickSide=0;
-
-function playUserDrum(){
-  const ac=getAC(),t=ac.currentTime+0.01,v=S.assistVol;
-  // Slightly higher pitch than computer drum — distinguishable but similar
-  const o=trackNode(ac.createOscillator()),g=ac.createGain();
-  o.connect(g);g.connect(ac.destination);
-  o.frequency.setValueAtTime(240,t);o.frequency.exponentialRampToValueAtTime(60,t+0.08);
-  g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.18);
-  o.start(t);o.stop(t+0.2);
-  const buf=ac.createBuffer(1,ac.sampleRate*0.04,ac.sampleRate);
-  const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
-  const s=trackNode(ac.createBufferSource()),ng=ac.createGain();
-  s.buffer=buf;s.connect(ng);ng.connect(ac.destination);
-  ng.gain.setValueAtTime(v*0.25,t);ng.gain.exponentialRampToValueAtTime(0.001,t+0.04);s.start(t);
-}
-
-// Direct bear animation — used by Player 2 in 2-player mode (bypasses the 2-player guard in setBear)
-function setBearDirect(name){
-  ['bearJustBear','bearDrumReady','bearDrumMotion','bearLeftStick','bearRightStick'].forEach(id=>document.getElementById(id).classList.remove('active'));
-  const m={ready:'bearJustBear',justbear:'bearJustBear',drumready:'bearDrumReady',drummotion:'bearDrumMotion',leftstick:'bearLeftStick',rightstick:'bearRightStick'};
-  (document.getElementById(m[name]||'bearJustBear')).classList.add('active');
-}
-
-function handleUserTap(e){
-  if(e) e.preventDefault();
-  if(!PS.playing||PS._inCountIn) return;
-  tapLog.push(performance.now());
-  // Animate box bear: alternate sticks, bounce back to drummotion after 100ms
-  const side=_userStickSide%2===0?'rightstick':'leftstick';
-  _userStickSide++;
-  setBoxBear(side);
-  playUserDrum();
-  setTimeout(()=>{ if(PS.playing) setBoxBear('drummotion'); },100);
-}
-
-let _p2StickSide=0;
-function handlePlayer2Tap(e){
-  if(e) e.preventDefault();
-  if(!PS.playing||PS._inCountIn) return;
-  tapLog2.push(performance.now());
-  const side=_p2StickSide%2===0?'leftstick':'rightstick';
-  _p2StickSide++;
-  setBearDirect(side);
-  playUserDrum();
-  setTimeout(()=>{ if(PS.playing) setBearDirect('drummotion'); },100);
-}
-
+// ── INPUT HANDLERS (playback controls only — no tap-timing input) ──
 function initInputHandlers(){
-  // Left pad — always Player 1
-  const lp=document.getElementById('leftPad');
-  lp.addEventListener('touchstart',e=>{e.preventDefault();handleUserTap(e);},{passive:false});
-  lp.addEventListener('mousedown',e=>{handleUserTap(e);});
-  // Right pad — Player 1 in 1-player mode, Player 2 in 2-player mode
-  const rp=document.getElementById('rightPad');
-  rp.addEventListener('touchstart',e=>{e.preventDefault();S.twoPlayer?handlePlayer2Tap(e):handleUserTap(e);},{passive:false});
-  rp.addEventListener('mousedown',e=>{S.twoPlayer?handlePlayer2Tap(e):handleUserTap(e);});
   // Stave area → new rhythm
   document.getElementById('staveArea').addEventListener('touchstart',e=>{e.preventDefault();handleStaveTap();},{passive:false});
   document.getElementById('staveArea').addEventListener('mousedown',()=>handleStaveTap());
-  // Keyboard: Space → play/stop; Enter → new rhythm; defined keys → tap
-  const P1_KEYS = new Set(['q','w','e','r','a','s','d','f','z','x','c']);
-  const P2_KEYS = new Set(['u','i','o','p','j','k','l','n','m']);
+  // Keyboard: Space → play/stop; Enter → new rhythm
   document.addEventListener('keydown',e=>{
     if(e.repeat) return;
     if(e.metaKey||e.ctrlKey||e.altKey) return;
     if(e.key===' '){e.preventDefault();handlePlayStop();}
     else if(e.key==='Enter'){e.preventDefault();handleStaveTap();}
-    else if(e.key.length===1){
-      const k=e.key.toLowerCase();
-      if(P1_KEYS.has(k)) handleUserTap(e);
-      else if(S.twoPlayer && P2_KEYS.has(k)) handlePlayer2Tap(e);
-    }
   });
 }
 
@@ -2074,7 +1888,6 @@ let currentMode = null; // null = start screen
 
 const modeScreens = {
   practise: ['countBar','staveArea','feedbackStrip','bearZone'],
-  play:     ['countBar','playScreen'],
   perform:  ['countBar','performScreen'],
 };
 
@@ -2117,9 +1930,6 @@ function enterMode(mode){
     drawAllBars();
     positionBeatNums();
   }
-  if(mode === 'play'){
-    initPlayMode();
-  }
 }
 
 function goHome(){
@@ -2145,7 +1955,6 @@ window.addEventListener('load',()=>{
 });
 window.addEventListener('resize',()=>{
   if(currentMode==='practise'){ layoutSizes();drawAllBars();positionBeatNums(); }
-  if(currentMode==='play'){ layoutPlayMode(); }
 });
 
 // ═══════════════════════════════════════════════════════════════
