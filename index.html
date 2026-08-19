@@ -1575,7 +1575,7 @@ function playClick(t,accent,vol){
 function totalPlays(){if(S.repeats===99)return Infinity;return S.repeats+1;}
 function handlePlayStop(){if(PS.playing||PS.paused){handleStop();}else{handlePlay();}}
 function handlePlay(){if(PS.playing)return;PS.currentRepeat=0;PS.totalRepeats=totalPlays();startCountIn(()=>playRepeat(0));}
-function handlePause(){if(!PS.playing)return;PS.playing=false;PS.paused=true;clearAll();setBear('ready');document.getElementById('statusText').textContent='Paused';}
+function handlePause(){if(!PS.playing)return;PS.playing=false;PS.paused=true;clearAll();setBear('ready');setBoxBear('ready');document.getElementById('statusText').textContent='Paused';}
 function handleStop(){
   PS.playing=false;PS.paused=false;PS._inCountIn=false;
   clearAll();PS.highlightGroup=-1;PS.highlightBar=-1;
@@ -1652,9 +1652,10 @@ function playRepeat(ri,st){
         const side=_stickSide%2===0?'rightstick':'leftstick';
         _stickSide++;
         setBear(side);
+        setBoxBear(side);
         // stick bounces back to drummotion after ~100ms
-        at(()=>setBear('drummotion'),100);
-      }else{setBear('drummotion');}
+        at(()=>{setBear('drummotion');setBoxBear('drummotion');},100);
+      }else{setBear('drummotion');setBoxBear('drummotion');}
     },ms);
   });
   at(()=>{
