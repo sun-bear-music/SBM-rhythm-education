@@ -1813,6 +1813,8 @@ function enterMode(mode){
     layoutSizes();
     drawAllBars();
     positionBeatNums();
+    getAC(); // kick off sound loading now (entering mode is a user gesture) — gives
+             // multi-file item sounds (fish/donuts) time to decode before Play is pressed
   }
 }
 
@@ -1952,6 +1954,13 @@ function playItemSound(who, item) {
       o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(70, t + 0.08);
       g.gain.setValueAtTime(0.45, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
       o.start(t); o.stop(t + 0.14);
+    },
+    donuts: () => {
+      const o = trackNode(ac.createOscillator()), g = ac.createGain();
+      o.type = 'triangle'; o.connect(g); g.connect(ac.destination);
+      o.frequency.setValueAtTime(600, t); o.frequency.exponentialRampToValueAtTime(300, t + 0.05);
+      g.gain.setValueAtTime(0.55, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+      o.start(t); o.stop(t + 0.12);
     },
   };
   (fallbacks[item] || fallbacks.box)();
