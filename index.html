@@ -171,47 +171,38 @@ SETTINGS (modal overlay, opened via ⚙ Settings button in transport bar)
   Count In: 1 or 2 bars; Visual / Sound / Both
   Metronome: On/Off + volume
   Repeats: No repeat / ×2 / ×4 / ∞
-  Drum Volume: assistance drum sound volume
-  [PENDING next phase: bar-count 1–8 picker, custom-level checkbox popup,
-  per-bear instrument switcher icons — see MODE SCAFFOLD note below.]
+  Drum Volume: assistance drum sound volume (applies to the drum instrument only —
+  per-item WAV sounds have their own fixed gain for now, see PER-BEAR INSTRUMENTS)
+  [PENDING next phase: bar-count 1–8 picker, custom-level checkbox popup.
+  Per-bear instrument switcher icons are DONE — see PER-BEAR INSTRUMENTS below.]
 
 ─────────────────────────────────────────────────────────────────────────────
-PLAY MODE — FREE-PLAY SANDBOX
+PER-BEAR INSTRUMENTS  [migrated from the old free-play "Play Mode" sandbox]
 ─────────────────────────────────────────────────────────────────────────────
-  No stave, no rhythm generation. Just two bears and a radio.
-
-  LAYOUT (landscape only)
-    Top:    Radio widget — power button + dial + green LED display
-    Below:  Left pad | Computer bear | User bear | Right pad
-
-  TAP PADS
-    Left pad  → computer bear hits its instrument
-    Right pad → user bear hits its instrument
-    Bear stage tap → cycles that bear's instrument
+  The old standalone Play Mode (radio + two free-play bears) has been fully
+  removed. Its reusable parts — per-bear instrument art and hit sounds —
+  now live directly in Practise mode:
 
   INSTRUMENTS (PLAY_ITEMS array)
-    Current: drum, box, bin, ball, fish
+    Current: drum, box, bin, ball, fish, donuts
     Drum uses synthesis (playDrum). Others use WAV files from assets/sounds/:
       box_sound.wav, bin_sound.wav, ball_sound.wav
-      fish_sound_1.wav … fish_sound_5.wav  (random pick per hit)
+      fish_sound_1.wav … fish_sound_5.wav, donut_sound_1.wav … donut_sound_3.wav
+      (random pick per hit from the pool)
     Add more sounds: extend ITEM_SOUND_POOLS with additional paths.
-    Falls back to synthesis if WAV hasn't loaded yet.
-    Each requires 4 SVGs: {who}_bear_{item}_{ready|motion|left_stick|right_stick}
+    Falls back to synthesis if a WAV hasn't loaded yet.
+    Each item requires 4 SVGs: {who}_bear_{item}_{ready|motion|left_stick|right_stick}
     Add more items by appending to PLAY_ITEMS + PLAY_ITEM_NAMES + providing SVGs + WAVs.
 
-  RADIO
-    Power button: toggleRadio() — toggles backing audio on/off
-    Dial: cycleRadioTrack() — cycles through RADIO_TRACKS array
-    Display: green LED showing track name or "Off"
-    Add tracks to RADIO_TRACKS: { name: 'Title', src: 'assets/audio/file.mp3' }
-    Dial rotates visually with each cycle.
-
-  BEAR STATE MANAGEMENT
-    PB object: { computer: { item, stickSide }, user: { item, stickSide } }
-    buildPlayBearImages(who): regenerates bear img elements for current item
-    setPlayBear(who, state): ready | motion | leftstick | rightstick
-    hitPlayBear(who): plays sound + animates stick hit, bounces back to motion
-    cyclePlayBearItem(who): advances item, rebuilds images, flashes label
+  PER-BEAR STATE & CONTROLS
+    BEAR_ITEM object: { computer: item, user: item } — independent per bear.
+    A small pill button sits below each bear (#bearItemBtn / #boxBearItemBtn);
+    tapping it calls cycleBearItem(who) to advance that bear's instrument.
+    Disabled while playing/paused (can't swap mid-rhythm).
+    applyBearItem(who, item): swaps the 4 state <img> srcs + updates the label.
+    triggerBearSound(who, t): plays that bear's own instrument sound at time t —
+    called for both bears on every non-rest note during playback, so each bear
+    can sound different while still visually striking in unison.
 
 
 ─────────────────────────────────────────────────────────────────────────────
@@ -226,10 +217,9 @@ MODE SCAFFOLD  [UPDATED — tap-input & two-player mode removed]
   Settings cog: visible in Practise only
   Home button: top right of countBar, visible in all active modes
   Perform mode: placeholder — built out in future sessions.
-  NOTE: The old free-play "Play Mode" screen/JS (radio, item-switching bears,
-  hit sounds) is still present in the code but no longer reachable from the
-  start screen — it's kept as source material to be migrated into Practise
-  mode's bear instrument-switching in the next phase, then removed for good.
+  The old free-play "Play Mode" (radio + item-switching sandbox) has been
+  fully deleted — see PER-BEAR INSTRUMENTS above for where its reusable
+  parts ended up.
 
 ─────────────────────────────────────────────────────────────────────────────
 KNOWN REMAINING ISSUES / FUTURE WORK
@@ -370,12 +360,36 @@ HOW TO CONTINUE DEVELOPMENT
   #bearsCenter{
     flex-shrink:0;
     display:flex;flex-direction:row;
-    align-items:center;
+    align-items:flex-end;
     justify-content:center;
     gap:24px;
     padding:0 12px;
     -webkit-tap-highlight-color:transparent;
     user-select:none;
+  }
+  .bear-col{
+    display:flex;flex-direction:column;
+    align-items:center;
+    gap:6px;
+  }
+  .bear-item-btn{
+    flex-shrink:0;
+    font-family:"Trebuchet MS",Verdana,sans-serif;
+    font-size:0.72rem;font-weight:700;
+    letter-spacing:0.06em;text-transform:uppercase;
+    color:rgba(255,250,239,0.7);
+    background:rgba(255,250,239,0.08);
+    border:none;
+    padding:4px 12px;border-radius:20px;
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+    user-select:none;
+    transition:color 0.2s, background 0.2s, transform 0.1s;
+  }
+  .bear-item-btn:active{transform:scale(0.94);}
+  .bear-item-btn.changed{
+    color:#E9C84D;
+    background:rgba(233,200,77,0.18);
   }
   .bear-stage{position:relative;height:100%;aspect-ratio:1/1;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;}
   .bear-state{position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;transition:none;}
@@ -643,155 +657,6 @@ HOW TO CONTINUE DEVELOPMENT
     text-transform:uppercase;
   }
   .mode-placeholder span{font-size:2.5rem;}
-  /* ── Play mode ── */
-  #playScreen{
-    display:flex;flex-direction:column;
-    overflow:hidden;
-  }
-
-  /* Radio */
-  #playRadio{
-    flex-shrink:0;
-    display:flex;align-items:center;justify-content:center;
-    padding:10px 0 6px;
-  }
-  #radioBody{
-    position:relative;
-    display:inline-block;
-    /* Height controlled by the SVG image's natural aspect ratio */
-    height:160px;
-  }
-  #radioImg{
-    height:100%;
-    width:auto;
-    display:block;
-    pointer-events:none;
-    user-select:none;
-  }
-  /* Track name overlay — positioned over the display screen area of the SVG.
-     Adjust left/top/width/height % values to match your SVG layout. */
-  #radioDisplay{
-    position:absolute;
-    left:38%;top:22%;width:28%;height:36%;
-    display:flex;align-items:center;justify-content:center;
-    pointer-events:none;
-  }
-  #radioTrackLabel{
-    font-family:'Courier New',monospace;
-    font-size:1.24rem;
-    font-weight:700;
-    color:#4dff88;
-    letter-spacing:0.06em;
-    text-shadow:0 0 6px rgba(77,255,136,0.7);
-    text-align:center;
-    line-height:1.2;
-  }
-  #radioTrackLabel.off{
-    color:#2a5a3a;
-    text-shadow:none;
-  }
-  /* Power button tap target — invisible, sits over the button area of the SVG.
-     Adjust left/top/width/height % to match your SVG. */
-  #radioPowerBtn{
-    position:absolute;
-    left:6%;top:25%;width:16%;height:50%;
-    background:transparent;
-    border:none;
-    cursor:pointer;
-    border-radius:50%;
-    -webkit-tap-highlight-color:transparent;
-    transition:opacity 0.08s;
-  }
-  #radioPowerBtn:active{opacity:0.6;}
-  /* Dial tap target — invisible circle over the dial area of the SVG.
-     Adjust left/top/width/height % to match your SVG. */
-  #radioDial{
-    position:absolute;
-    left:76%;top:15%;width:20%;height:70%;
-    border-radius:50%;
-    cursor:pointer;
-    -webkit-tap-highlight-color:transparent;
-    transition:transform 0.2s ease;
-  }
-  #radioDial:active{opacity:0.7;}
-  /* Dial mark — hidden since the real dial is in the SVG image */
-  #radioDialMark{ display:none; }
-
-  /* Bear zone */
-  #playBearZone{
-    flex:1;min-height:0;
-    display:flex;flex-direction:row;
-    align-items:stretch;
-  }
-  .play-pad{
-    flex:1;
-    display:flex;align-items:center;justify-content:center;
-    cursor:pointer;
-    -webkit-tap-highlight-color:transparent;
-    user-select:none;
-    transition:background 0.08s;
-    position:relative;
-  }
-  .play-pad:active{background:rgba(255,250,239,0.05);}
-  .play-pad-hint{
-    font-family:"Trebuchet MS",Verdana,sans-serif;
-    font-size:0.7rem;font-weight:700;
-    letter-spacing:0.15em;
-    color:rgba(255,250,239,0.18);
-    text-transform:uppercase;
-    pointer-events:none;
-    user-select:none;
-  }
-  #playBearsCenter{
-    flex-shrink:0;
-    display:flex;flex-direction:row;
-    align-items:flex-end;
-    justify-content:center;
-    gap:32px;
-    padding:0 8px 12px;
-  }
-  .play-bear-col{
-    display:flex;flex-direction:column;
-    align-items:center;
-    gap:6px;
-  }
-  .play-bear-label{
-    font-family:"Trebuchet MS",Verdana,sans-serif;
-    font-size:0.7rem;font-weight:700;
-    letter-spacing:0.1em;text-transform:uppercase;
-    color:rgba(255,250,239,0.35);
-  }
-  .play-bear-stage{
-    position:relative;
-    cursor:pointer;
-    -webkit-tap-highlight-color:transparent;
-    user-select:none;
-  }
-  .play-bear-states{
-    position:relative;width:100%;height:100%;
-  }
-  .play-bear-state{
-    position:absolute;top:0;left:0;width:100%;height:100%;
-    opacity:0;transition:none;
-  }
-  .play-bear-state img{
-    width:100%;height:100%;object-fit:contain;
-    transform:scale(0.7419);transform-origin:top center;
-  }
-  .play-bear-state.active{opacity:1;}
-  .play-item-label{
-    font-family:"Trebuchet MS",Verdana,sans-serif;
-    font-size:0.72rem;font-weight:700;
-    letter-spacing:0.06em;text-transform:uppercase;
-    color:rgba(255,250,239,0.5);
-    background:rgba(255,250,239,0.07);
-    padding:3px 10px;border-radius:20px;
-    transition:color 0.25s, background 0.25s;
-  }
-  .play-item-label.changed{
-    color:#E9C84D;
-    background:rgba(233,200,77,0.15);
-  }
 
 </style>
 </head>
@@ -821,84 +686,46 @@ HOW TO CONTINUE DEVELOPMENT
   <div id="bearZone">
     <div class="side-pad" id="leftPad"></div>
     <div id="bearsCenter">
-      <!-- User bear (box bear) — LEFT, Player 1 -->
-      <div class="bear-stage" id="boxBearStage"
-        ontouchstart="event.preventDefault();handlePlayStop();"
-        onmousedown="handlePlayStop();">
-        <div class="bear-state active" id="boxBearJustBear"><img id="imgBoxBearJustBear" src="" alt="Box bear"></div>
-        <div class="bear-state" id="boxBearDrumReady"><img id="imgBoxBearDrumReady" src="" alt="Box bear drum ready"></div>
-        <div class="bear-state" id="boxBearDrumMotion"><img id="imgBoxBearDrumMotion" src="" alt="Box bear drum motion"></div>
-        <div class="bear-state" id="boxBearLeftStick"><img id="imgBoxBearLeftStick" src="" alt="Box bear left stick"></div>
-        <div class="bear-state" id="boxBearRightStick"><img id="imgBoxBearRightStick" src="" alt="Box bear right stick"></div>
+      <!-- User bear (box bear) — LEFT -->
+      <div class="bear-col">
+        <div class="bear-stage" id="boxBearStage"
+          ontouchstart="event.preventDefault();handlePlayStop();"
+          onmousedown="handlePlayStop();">
+          <div class="bear-state active" id="boxBearJustBear"><img id="imgBoxBearJustBear" src="" alt="Box bear"></div>
+          <div class="bear-state" id="boxBearDrumReady"><img id="imgBoxBearDrumReady" src="" alt="Box bear drum ready"></div>
+          <div class="bear-state" id="boxBearDrumMotion"><img id="imgBoxBearDrumMotion" src="" alt="Box bear drum motion"></div>
+          <div class="bear-state" id="boxBearLeftStick"><img id="imgBoxBearLeftStick" src="" alt="Box bear left stick"></div>
+          <div class="bear-state" id="boxBearRightStick"><img id="imgBoxBearRightStick" src="" alt="Box bear right stick"></div>
+        </div>
+        <button class="bear-item-btn" id="boxBearItemBtn"
+          onclick="event.stopPropagation();cycleBearItem('user');"
+          ontouchstart="event.preventDefault();event.stopPropagation();cycleBearItem('user');"
+          title="Change instrument">
+          <span id="boxBearItemLabel">Drum</span>
+        </button>
       </div>
-      <!-- Computer bear — RIGHT, Player 2 in 2-player mode -->
-      <div class="bear-stage" id="bearStage"
-        ontouchstart="event.preventDefault();handlePlayStop();"
-        onmousedown="handlePlayStop();">
-        <div class="bear-state active" id="bearJustBear"><img id="imgBearJustBear" src="" alt="Bear"></div>
-        <div class="bear-state" id="bearDrumReady"><img id="imgBearDrumReady" src="" alt="Bear drum ready"></div>
-        <div class="bear-state" id="bearDrumMotion"><img id="imgBearDrumMotion" src="" alt="Bear drum motion"></div>
-        <div class="bear-state" id="bearLeftStick"><img id="imgBearLeftStick" src="" alt="Bear left stick"></div>
-        <div class="bear-state" id="bearRightStick"><img id="imgBearRightStick" src="" alt="Bear right stick"></div>
+      <!-- Computer bear — RIGHT -->
+      <div class="bear-col">
+        <div class="bear-stage" id="bearStage"
+          ontouchstart="event.preventDefault();handlePlayStop();"
+          onmousedown="handlePlayStop();">
+          <div class="bear-state active" id="bearJustBear"><img id="imgBearJustBear" src="" alt="Bear"></div>
+          <div class="bear-state" id="bearDrumReady"><img id="imgBearDrumReady" src="" alt="Bear drum ready"></div>
+          <div class="bear-state" id="bearDrumMotion"><img id="imgBearDrumMotion" src="" alt="Bear drum motion"></div>
+          <div class="bear-state" id="bearLeftStick"><img id="imgBearLeftStick" src="" alt="Bear left stick"></div>
+          <div class="bear-state" id="bearRightStick"><img id="imgBearRightStick" src="" alt="Bear right stick"></div>
+        </div>
+        <button class="bear-item-btn" id="bearItemBtn"
+          onclick="event.stopPropagation();cycleBearItem('computer');"
+          ontouchstart="event.preventDefault();event.stopPropagation();cycleBearItem('computer');"
+          title="Change instrument">
+          <span id="bearItemLabel">Drum</span>
+        </button>
       </div>
     </div>
     <!-- Count-in overlay — floats over bear zone, hidden except during count-in -->
     <div id="countInOverlay"><span id="countInNum"></span></div>
     <div class="side-pad" id="rightPad"></div>
-  </div>
-
-  <!-- Play mode screen -->
-  <div id="playScreen" style="display:none;flex:1;flex-direction:column;min-height:0;">
-
-    <!-- Radio -->
-    <div id="playRadio">
-      <div id="radioBody">
-        <img id="radioImg" src="assets/svg/ui/radio.svg" alt="Radio">
-        <!-- Invisible tap targets overlaid on the SVG — adjust % positions to match your SVG layout -->
-        <button id="radioPowerBtn" onclick="toggleRadio()" title="Power on/off"></button>
-        <div id="radioDial" onclick="cycleRadioTrack()" title="Change track">
-          <div id="radioDialMark"></div>
-        </div>
-        <!-- Track name display floated over the SVG display area -->
-        <div id="radioDisplay" style="display:none;">
-          <span id="radioTrackLabel" class="off">Off</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Bears + pads -->
-    <div id="playBearZone">
-      <div class="play-pad" id="playLeftPad"
-        ontouchstart="event.preventDefault();hitPlayBear('computer');"
-        onmousedown="hitPlayBear('computer');">
-      </div>
-
-      <div id="playBearsCenter">
-        <!-- Computer bear -->
-        <div class="play-bear-col">
-          <div class="play-bear-stage" id="playComputerBearStage"
-            ontouchstart="event.preventDefault();cyclePlayBearItem('computer');"
-            onmousedown="cyclePlayBearItem('computer');">
-            <div class="play-bear-states" id="playComputerBearStates"></div>
-          </div>
-        </div>
-
-        <!-- User bear -->
-        <div class="play-bear-col">
-          <div class="play-bear-stage" id="playUserBearStage"
-            ontouchstart="event.preventDefault();cyclePlayBearItem('user');"
-            onmousedown="cyclePlayBearItem('user');">
-            <div class="play-bear-states" id="playUserBearStates"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="play-pad" id="playRightPad"
-        ontouchstart="event.preventDefault();hitPlayBear('user');"
-        onmousedown="hitPlayBear('user');">
-      </div>
-    </div>
-
   </div>
 
   <!-- Perform mode placeholder -->
@@ -1536,6 +1363,7 @@ function getAC(){
     PS.audioCtx=new(window.AudioContext||window.webkitAudioContext)();
     // Load sounds now that we have a running AudioContext (requires user gesture)
     loadSounds();
+    loadItemSounds();
   }
   return PS.audioCtx;
 }
@@ -1641,7 +1469,10 @@ function playRepeat(ri,st){
     const ms=(st+ev.beatOffset*bd-ac.currentTime)*1000;
     at(()=>{
       if(!PS.playing)return;
-      if(drumEnabled&&!ev.isRest)playDrum(ac.currentTime+0.01,S.assistVol);
+      if(drumEnabled&&!ev.isRest){
+        triggerBearSound('computer',ac.currentTime+0.01);
+        triggerBearSound('user',ac.currentTime+0.01);
+      }
       if(ev.isGroupFirst){
         const prevBar=PS.highlightBar;
         PS.highlightGroup=ev.gIdx;PS.highlightBar=ev.barIdx;
@@ -1747,6 +1578,57 @@ function setBoxBear(name){
   (document.getElementById(m[name]||'boxBearJustBear')).classList.add('active');
 }
 
+// ── PER-BEAR INSTRUMENT (drum / box / bin / ball / fish / donuts) ──
+// Each bear can independently hold a different instrument. The 5 state
+// divs (just-bear, ready, motion, left-stick, right-stick) stay fixed —
+// only the <img> src for the 4 item-specific states is swapped per item.
+// 'just bear' (idle, empty-handed) has no per-item art and stays generic.
+const BEAR_ITEM = { computer: 'drum', user: 'drum' };
+const BEAR_SVG_PREFIX = { computer: 'computer_bear', user: 'user_bear' };
+const BEAR_IMG_ID_PREFIX = { computer: 'imgBear', user: 'imgBoxBear' };
+const BEAR_LABEL_ID = { computer: 'bearItemLabel', user: 'boxBearItemLabel' };
+const BEAR_BTN_ID = { computer: 'bearItemBtn', user: 'boxBearItemBtn' };
+
+function applyBearItem(who, item){
+  BEAR_ITEM[who] = item;
+  const svgPrefix = BEAR_SVG_PREFIX[who];
+  const idPrefix = BEAR_IMG_ID_PREFIX[who];
+  const stateMap = [
+    ['DrumReady', 'ready'],
+    ['DrumMotion', 'motion'],
+    ['LeftStick', 'left_stick'],
+    ['RightStick', 'right_stick'],
+  ];
+  stateMap.forEach(([domSuffix, svgSuffix])=>{
+    const el = document.getElementById(idPrefix + domSuffix);
+    const src = SVGS[`${svgPrefix}_${item}_${svgSuffix}`];
+    if(el && src) el.src = src;
+  });
+  const label = document.getElementById(BEAR_LABEL_ID[who]);
+  if(label) label.textContent = PLAY_ITEM_NAMES[item] || item;
+}
+
+function cycleBearItem(who){
+  if(PS.playing || PS.paused) return; // don't swap instruments mid-playback
+  const idx = PLAY_ITEMS.indexOf(BEAR_ITEM[who]);
+  const next = PLAY_ITEMS[(idx + 1) % PLAY_ITEMS.length];
+  applyBearItem(who, next);
+  const btn = document.getElementById(BEAR_BTN_ID[who]);
+  if(btn){
+    btn.classList.add('changed');
+    setTimeout(()=>btn.classList.remove('changed'), 500);
+  }
+}
+
+// Triggers this bear's chosen instrument sound at time t (defaults to now).
+function triggerBearSound(who, t){
+  const ac=getAC();
+  t = t ?? ac.currentTime+0.01;
+  const item = BEAR_ITEM[who];
+  if(item === 'drum'){ playDrum(t, S.assistVol); return; }
+  playItemSound(who, item);
+}
+
 // ── LAYOUT SIZING ────────────────────────────────────────────
 function layoutSizes(){
   // Size the stave area and bear zone based on available space
@@ -1769,8 +1651,9 @@ function layoutSizes(){
   const bearH=Math.max(60, totalH - countH - stavesNeeded - feedH);
   bearZone.style.height=bearH+'px';
 
-  // Size bear stages — bears are centred in the zone, no padding offset needed
-  const bearSize=Math.min(bearH*0.95, (app.clientWidth*0.28));
+  // Size bear stages — reserve room below each bear for the instrument-switch button
+  const ITEM_BTN_H = 34; // approx button height + gap, reserved from available bear height
+  const bearSize=Math.min((bearH-ITEM_BTN_H)*0.95, (app.clientWidth*0.28));
   document.querySelectorAll('.bear-stage').forEach(el=>{
     el.style.width=bearSize+'px';
     el.style.height=bearSize+'px';
@@ -1898,7 +1781,7 @@ function showStartScreen(){
   currentMode = null;
   document.getElementById('startScreen').classList.remove('hidden');
   // Hide all mode content
-  ['countBar','staveArea','feedbackStrip','bearZone','playScreen','performScreen']
+  ['countBar','staveArea','feedbackStrip','bearZone','performScreen']
     .forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
 }
 
@@ -1907,7 +1790,7 @@ function enterMode(mode){
   document.getElementById('startScreen').classList.add('hidden');
 
   // Hide everything first
-  ['countBar','staveArea','feedbackStrip','bearZone','playScreen','performScreen']
+  ['countBar','staveArea','feedbackStrip','bearZone','performScreen']
     .forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
 
   // Show what this mode needs
@@ -1919,7 +1802,7 @@ function enterMode(mode){
     else if(id==='staveArea') el.style.display='flex';
     else if(id==='feedbackStrip') el.style.display='block';
     else if(id==='bearZone')  el.style.display='flex';
-    else if(id==='playScreen'||id==='performScreen') el.style.display='flex';
+    else if(id==='performScreen') el.style.display='flex';
   });
 
   // Settings cog only visible in practise
@@ -1999,7 +1882,7 @@ const ITEM_SOUND_POOLS = {
 const ITEM_SOUND_BUFFERS = {};
 
 // Load all item sounds into ITEM_SOUND_BUFFERS.
-// Called once from initPlayMode (after user gesture has created AudioContext).
+// Called once from getAC() the first time an AudioContext is created (requires a user gesture).
 function loadItemSounds() {
   const ac = getAC();
   const allPaths = Object.values(ITEM_SOUND_POOLS).flat();
@@ -2072,176 +1955,6 @@ function playItemSound(who, item) {
     },
   };
   (fallbacks[item] || fallbacks.box)();
-}
-
-// State for the two play-mode bears
-const PB = {
-  computer: { item: 'drum', stickSide: 0 },
-  user:     { item: 'drum', stickSide: 0 }
-};
-
-// Build the HTML image elements for a play-mode bear
-function buildPlayBearImages(who) {
-  const container = document.getElementById(`play${who.charAt(0).toUpperCase() + who.slice(1)}BearStates`);
-  if (!container) return;
-  container.innerHTML = '';
-  const item = PB[who].item;
-  const prefix = `${who}_bear_${item}`;
-  const states = [
-    { key: `${prefix}_ready`,      id: `play_${who}_ready`      },
-    { key: `${prefix}_motion`,     id: `play_${who}_motion`     },
-    { key: `${prefix}_left_stick`, id: `play_${who}_leftstick`  },
-    { key: `${prefix}_right_stick`,id: `play_${who}_rightstick` },
-  ];
-  states.forEach((st, i) => {
-    const div = document.createElement('div');
-    div.className = 'play-bear-state' + (i === 0 ? ' active' : '');
-    div.id = st.id;
-    const img = document.createElement('img');
-    img.src = SVGS[st.key] || '';
-    img.alt = st.id;
-    div.appendChild(img);
-    container.appendChild(div);
-  });
-}
-
-function setPlayBear(who, name) {
-  const prefix = `play_${who}_`;
-  ['ready','motion','leftstick','rightstick'].forEach(s => {
-    const el = document.getElementById(prefix + s);
-    if (el) el.classList.remove('active');
-  });
-  const el = document.getElementById(prefix + name);
-  if (el) el.classList.add('active');
-}
-
-function hitPlayBear(who) {
-  const state = PB[who];
-  const side = state.stickSide % 2 === 0 ? 'leftstick' : 'rightstick';
-  state.stickSide++;
-  setPlayBear(who, side);
-  playItemSound(who, state.item);
-  setTimeout(() => setPlayBear(who, 'motion'), 110);
-}
-
-function cyclePlayBearItem(who) {
-  const state = PB[who];
-  const idx = PLAY_ITEMS.indexOf(state.item);
-  state.item = PLAY_ITEMS[(idx + 1) % PLAY_ITEMS.length];
-  state.stickSide = 0;
-  buildPlayBearImages(who);
-  setPlayBear(who, 'ready');
-  // Update label with flash
-  const labelId = `play${who.charAt(0).toUpperCase() + who.slice(1)}ItemLabel`;
-  const label = document.getElementById(labelId);
-  if (label) {
-    label.textContent = PLAY_ITEM_NAMES[state.item] || state.item;
-    label.classList.add('changed');
-    setTimeout(() => label.classList.remove('changed'), 600);
-  }
-  // Rotate dial mark visually
-  const dialMark = document.getElementById('radioDialMark');
-  if (dialMark) {
-    const deg = PLAY_ITEMS.indexOf(state.item) * (360 / PLAY_ITEMS.length);
-    dialMark.style.transform = `translateX(-50%) rotate(${deg}deg)`;
-  }
-}
-
-function layoutPlayMode() {
-  const app = document.getElementById('app');
-  const countBar = document.getElementById('countBar');
-  const playScreen = document.getElementById('playScreen');
-  if (!playScreen || playScreen.style.display === 'none') return;
-
-  const totalH = app.clientHeight;
-  const countH = countBar.offsetHeight;
-  const radioEl = document.getElementById('playRadio');
-  const radioH = radioEl ? radioEl.offsetHeight : 70;
-  const available = totalH - countH - radioH - 20;
-
-  const bearSize = Math.min(available * 0.88, app.clientWidth * 0.30);
-
-  ['playComputerBearStage', 'playUserBearStage'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) { el.style.width = bearSize + 'px'; el.style.height = bearSize + 'px'; }
-  });
-}
-
-// ── RADIO ───────────────────────────────────────────────────────
-const RADIO_TRACKS = [
-  { name: 'No track loaded' }
-  // Add more tracks here as: { name: 'Track Name', src: 'assets/sounds/track1.mp3' }
-];
-
-let radioOn = false;
-let radioTrackIdx = 0;
-let radioAudioEl = null;
-let _dialAngle = 0;
-
-function toggleRadio() {
-  radioOn = !radioOn;
-  document.getElementById('radioPowerBtn').classList.toggle('on', radioOn);
-  updateRadioDisplay();
-  if (radioAudioEl) {
-    if (radioOn) { radioAudioEl.play().catch(() => {}); }
-    else { radioAudioEl.pause(); }
-  }
-}
-
-function cycleRadioTrack() {
-  if (RADIO_TRACKS.length <= 1) return;
-  radioTrackIdx = (radioTrackIdx + 1) % RADIO_TRACKS.length;
-  // Rotate dial
-  _dialAngle += 360 / RADIO_TRACKS.length;
-  const mark = document.getElementById('radioDialMark');
-  if (mark) mark.style.transform = `translateX(-50%) rotate(${_dialAngle}deg)`;
-  updateRadioDisplay();
-  loadRadioTrack();
-}
-
-function loadRadioTrack() {
-  const track = RADIO_TRACKS[radioTrackIdx];
-  if (!track.src) { if (radioAudioEl) { radioAudioEl.pause(); radioAudioEl = null; } return; }
-  if (radioAudioEl) radioAudioEl.pause();
-  radioAudioEl = new Audio(track.src);
-  radioAudioEl.loop = true;
-  if (radioOn) radioAudioEl.play().catch(() => {});
-}
-
-function updateRadioDisplay() {
-  const label = document.getElementById('radioTrackLabel');
-  if (!label) return;
-  if (!radioOn) {
-    label.textContent = 'Off';
-    label.className = 'off';
-  } else {
-    const track = RADIO_TRACKS[radioTrackIdx];
-    label.textContent = track.name.toUpperCase();
-    label.className = '';
-  }
-}
-
-// ── PLAY MODE INIT ──────────────────────────────────────────────
-function initPlayMode() {
-  // Kick off WAV loading (requires AudioContext, which needs a user gesture —
-  // entering Play mode counts as one)
-  loadItemSounds();
-  // Build bear image sets
-  buildPlayBearImages('computer');
-  buildPlayBearImages('user');
-  // Update labels
-  ['computer', 'user'].forEach(who => {
-    const labelId = `play${who.charAt(0).toUpperCase() + who.slice(1)}ItemLabel`;
-    const label = document.getElementById(labelId);
-    if (label) label.textContent = PLAY_ITEM_NAMES[PB[who].item] || PB[who].item;
-  });
-  // Set initial bear state
-  setPlayBear('computer', 'ready');
-  setPlayBear('user', 'ready');
-  // Size bears
-  layoutPlayMode();
-  // Radio display
-  updateRadioDisplay();
 }
 
 </script>
