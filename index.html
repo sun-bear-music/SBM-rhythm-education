@@ -286,9 +286,9 @@ HOW TO CONTINUE DEVELOPMENT
     position:relative;
     user-select:none;
   }
-  /* Settings button — red circle top-left */
+  /* Settings button — same side as the slide-in panel (right) */
   #settingsBtn{
-    position:absolute;left:10px;top:50%;transform:translateY(-50%);
+    position:absolute;right:10px;top:50%;transform:translateY(-50%);
     width:36px;height:36px;border-radius:50%;
     background:none;border:none;cursor:pointer;
     display:flex;align-items:center;justify-content:center;
@@ -360,10 +360,10 @@ HOW TO CONTINUE DEVELOPMENT
   #bearsCenter{
     flex-shrink:0;
     display:flex;flex-direction:row;
-    align-items:flex-end;
+    align-items:center;
     justify-content:center;
     gap:24px;
-    padding:0 12px;
+    padding:0 12px 18px;
     -webkit-tap-highlight-color:transparent;
     user-select:none;
   }
@@ -635,9 +635,9 @@ HOW TO CONTINUE DEVELOPMENT
   .mode-btn.mode-btn-primary{background:var(--teal);color:white;}
   .mode-btn.mode-btn-primary:hover{background:var(--teal-light);}
 
-  /* ── Home button (top right, all modes) ── */
+  /* ── Home button (top left, all modes) ── */
   #homeBtn{
-    position:absolute;right:10px;top:50%;transform:translateY(-50%);
+    position:absolute;left:10px;top:50%;transform:translateY(-50%);
     width:36px;height:36px;border-radius:50%;
     background:none;border:none;cursor:pointer;
     display:flex;align-items:center;justify-content:center;
